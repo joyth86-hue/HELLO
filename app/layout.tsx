@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kanata Games",
-  description: "Kanata Games - mini game collection",
+  title: "あきくんゲームス",
+  description: "あきくんゲームス - mini game collection",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
