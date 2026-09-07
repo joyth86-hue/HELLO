@@ -16,6 +16,7 @@ CLAUDE.md本体には仕様を書かず、常にこの分冊側を更新する�
 | [save-data.md](./save-data.md) | セーブデータ（共有データ／ゲームごとのデータ）の仕様 |
 | [characters.md](./characters.md) | 仲間キャラクター素材（画像）の管理方法 |
 | [enemies.md](./enemies.md) | 敵キャラクター素材（画像）の管理方法 |
+| [roster.md](./roster.md) | 仲間・敵キャラクターの基本情報一覧（名称・属性・武器種など） |
 | [fields.md](./fields.md) | 戦闘背景（フィールド）素材の管理方法 |
 | [visual-design.md](./visual-design.md) | 配色などビジュアルデザインの方針 |
 
