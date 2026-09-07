@@ -76,7 +76,7 @@ export default function CharacterViewPage() {
   };
 
   return (
-    <div className="relative flex h-screen flex-col bg-background">
+    <div className="relative flex h-screen touch-none flex-col overflow-hidden bg-background">
       <Link
         href="/games/game1"
         aria-label="Game1のメイン画面に戻る"
@@ -109,7 +109,7 @@ export default function CharacterViewPage() {
       <div className="flex flex-1 items-center justify-center overflow-hidden px-6 py-3">
         <div
           ref={frameRef}
-          className="relative aspect-[2/3] h-auto max-h-full w-full max-w-[340px] touch-pan-y overflow-hidden rounded-xl border-4 border-black bg-[#fffaf0] p-1.5 shadow-[inset_0_0_0_4px_#fffaf0,inset_0_0_0_5px_#171717]"
+          className="relative aspect-[2/3] h-auto max-h-full w-full max-w-[340px] touch-none overflow-hidden rounded-xl border-4 border-black bg-[#fffaf0] p-1.5 shadow-[inset_0_0_0_4px_#fffaf0,inset_0_0_0_5px_#171717]"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={endDrag}
