@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
+import { stickerButton, stickerButtonDisabled } from "@/lib/ui";
 import { loadGlobalData, setUserName } from "@/lib/storage";
 
 type Status = "checking" | "onboarding-input" | "onboarding-confirm" | "ready";
@@ -40,9 +41,9 @@ export default function StartPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center gap-16 bg-white p-6 text-center">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-16 bg-background p-6 text-center">
       {status === "ready" && loginName && (
-        <p className="absolute left-4 top-4 text-sm font-medium text-zinc-600">
+        <p className="absolute left-4 top-4 text-sm font-medium text-zinc-700">
           ログイン名：{loginName}
         </p>
       )}
@@ -57,13 +58,13 @@ export default function StartPage() {
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
             maxLength={20}
-            className="w-full rounded-lg border border-zinc-400 bg-white px-4 py-3 text-center text-black outline-none focus:border-black"
+            className="w-full rounded-lg border-2 border-black bg-white px-4 py-3 text-center text-black outline-none"
             placeholder="なまえ"
           />
           <button
             onClick={handleSubmitName}
             disabled={!nameInput.trim()}
-            className="rounded-full bg-black px-10 py-3 font-semibold text-white transition-colors active:bg-zinc-700 disabled:bg-zinc-300"
+            className={`rounded-full px-10 py-3 ${nameInput.trim() ? stickerButton : stickerButtonDisabled}`}
           >
             OK
           </button>
@@ -76,16 +77,10 @@ export default function StartPage() {
             {nameInput.trim()}さんでいいですか？
           </p>
           <div className="flex gap-4">
-            <button
-              onClick={handleConfirmYes}
-              className="rounded-full bg-black px-8 py-3 font-semibold text-white transition-colors active:bg-zinc-700"
-            >
+            <button onClick={handleConfirmYes} className={`${stickerButton} rounded-full px-8 py-3`}>
               はい
             </button>
-            <button
-              onClick={handleConfirmNo}
-              className="rounded-full border border-black px-8 py-3 font-semibold text-black transition-colors active:bg-zinc-100"
-            >
+            <button onClick={handleConfirmNo} className={`${stickerButton} rounded-full px-8 py-3`}>
               いいえ
             </button>
           </div>
@@ -93,10 +88,7 @@ export default function StartPage() {
       )}
 
       {status === "ready" && (
-        <button
-          onClick={() => router.push("/menu")}
-          className="rounded-full bg-black px-12 py-4 text-lg font-semibold text-white transition-colors active:bg-zinc-700"
-        >
+        <button onClick={() => router.push("/menu")} className={`${stickerButton} rounded-full px-12 py-4 text-lg`}>
           Start
         </button>
       )}

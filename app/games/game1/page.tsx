@@ -9,6 +9,7 @@ import {
   loadGlobalData,
   saveGameData,
 } from "@/lib/storage";
+import { stickerButton } from "@/lib/ui";
 
 interface Game1SaveData {
   playCount: number;
@@ -36,27 +37,21 @@ export default function Game1Page() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center gap-8 bg-white p-6 pt-20 text-center">
+    <div className="flex min-h-screen flex-col items-center gap-8 bg-background p-6 pt-20 text-center">
       <h1 className="text-2xl font-bold tracking-wide text-black">
         Game 1（仮画面）
       </h1>
 
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-300 bg-zinc-50 p-6 text-left text-zinc-700">
+      <div className="w-full max-w-sm rounded-2xl border-2 border-black bg-white p-6 text-left text-zinc-700">
         <p>共通通貨（全ゲーム共有）: {formatCurrency(currency)}</p>
         <p>このゲームのプレイ回数: {playCount}</p>
       </div>
 
-      <button
-        onClick={handleEarn}
-        className="rounded-full bg-black px-8 py-3 font-semibold text-white transition-colors active:bg-zinc-700"
-      >
+      <button onClick={handleEarn} className={`${stickerButton} rounded-full px-8 py-3`}>
         通貨を10稼ぐ（テスト用）
       </button>
 
-      <Link
-        href="/menu"
-        className="rounded-full border border-black px-8 py-3 font-semibold text-black transition-colors active:bg-zinc-100"
-      >
+      <Link href="/menu" className={`${stickerButton} rounded-full px-8 py-3`}>
         ゲーム選択に戻る
       </Link>
     </div>

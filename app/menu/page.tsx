@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatCurrency, loadGlobalData } from "@/lib/storage";
+import { stickerButton } from "@/lib/ui";
 
 const games = [
   { id: "game1", label: "Game 1", href: "/games/game1", available: true },
@@ -18,9 +19,9 @@ export default function MenuPage() {
   }, []);
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center gap-10 bg-white p-6 pt-20 text-center">
+    <div className="relative flex min-h-screen flex-col items-center gap-10 bg-background p-6 pt-20 text-center">
       {currency !== null && (
-        <p className="absolute right-4 top-4 rounded-full bg-black px-4 py-1.5 text-sm font-semibold text-white">
+        <p className="absolute right-4 top-4 rounded-full border-2 border-black bg-white px-4 py-1.5 text-sm font-semibold text-black">
           {formatCurrency(currency)}
         </p>
       )}
@@ -35,7 +36,7 @@ export default function MenuPage() {
             <Link
               key={game.id}
               href={game.href}
-              className="rounded-2xl bg-black px-6 py-5 text-lg font-semibold text-white transition-colors active:bg-zinc-700"
+              className={`${stickerButton} rounded-2xl px-6 py-5 text-lg`}
             >
               {game.label}
             </Link>
