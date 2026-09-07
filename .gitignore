@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# 作業用の画像置き場（本番で使う画像は public/characters にコピーして管理する）
+/サンプル画像
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

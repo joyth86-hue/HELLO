@@ -51,6 +51,10 @@ export default function Game1Page() {
         通貨を10稼ぐ（テスト用）
       </button>
 
+      <Link href="/games/game1/character" className={`${stickerButton} rounded-full px-8 py-3`}>
+        キャラクター
+      </Link>
+
       <Link href="/menu" className={`${stickerButton} rounded-full px-8 py-3`}>
         ゲーム選択に戻る
       </Link>
