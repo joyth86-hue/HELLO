@@ -2,14 +2,13 @@
 // ステータス（HP・攻撃力など）はまだどこにも定義していない。必要になったら
 // lib/characters.ts と同様に別ファイルで管理する。
 //
-// name / element / weaponType は未確定の項目。null のものは今後埋める。
-// （コメントの見た目メモはあくまで参考で、実データではない）
+// 敵キャラクターには武器種の概念が無いため weaponType は持たせていない
+// （仲間キャラクターの lib/characters-info.ts とはこの点でフィールドが異なる）。
 
 export interface EnemyBaseInfo {
   id: string;
-  name: string | null;
-  element: string | null;
-  weaponType: string | null;
+  name: string;
+  element: string;
   assets: {
     battleIdle: string;
     battleAttack: string;
@@ -19,11 +18,9 @@ export interface EnemyBaseInfo {
 
 export const ENEMY_BASE_INFO: EnemyBaseInfo[] = [
   {
-    // ゴブリン（棍棒を持った緑色の小鬼）
     id: "e01",
-    name: null,
-    element: null,
-    weaponType: null,
+    name: "こどもゴブリン",
+    element: "草",
     assets: {
       battleIdle: "/enemies/e01_d01.png",
       battleAttack: "/enemies/e01_d02.png",
@@ -31,11 +28,9 @@ export const ENEMY_BASE_INFO: EnemyBaseInfo[] = [
     },
   },
   {
-    // オーク（ゴブリンより大柄・防具付き）
     id: "e02",
-    name: null,
-    element: null,
-    weaponType: null,
+    name: "ゴブリン兄貴",
+    element: "草",
     assets: {
       battleIdle: "/enemies/e02_d01.png",
       battleAttack: "/enemies/e02_d02.png",
@@ -43,11 +38,9 @@ export const ENEMY_BASE_INFO: EnemyBaseInfo[] = [
     },
   },
   {
-    // 呪われたテディベア
     id: "e03",
-    name: null,
-    element: null,
-    weaponType: null,
+    name: "古びたクマさん",
+    element: "岩",
     assets: {
       battleIdle: "/enemies/e03_d01.png",
       battleAttack: "/enemies/e03_d02.png",
@@ -55,11 +48,9 @@ export const ENEMY_BASE_INFO: EnemyBaseInfo[] = [
     },
   },
   {
-    // きのこの魔物
     id: "e04",
-    name: null,
-    element: null,
-    weaponType: null,
+    name: "歩くキノコ",
+    element: "草",
     assets: {
       battleIdle: "/enemies/e04_d01.png",
       battleAttack: "/enemies/e04_d02.png",
@@ -67,11 +58,9 @@ export const ENEMY_BASE_INFO: EnemyBaseInfo[] = [
     },
   },
   {
-    // 氷のスライム
     id: "e05",
-    name: null,
-    element: null,
-    weaponType: null,
+    name: "水スラ",
+    element: "水",
     assets: {
       battleIdle: "/enemies/e05_d01.png",
       battleAttack: "/enemies/e05_d02.png",
@@ -79,11 +68,9 @@ export const ENEMY_BASE_INFO: EnemyBaseInfo[] = [
     },
   },
   {
-    // 緑のスライム
     id: "e06",
-    name: null,
-    element: null,
-    weaponType: null,
+    name: "草スラ",
+    element: "草",
     assets: {
       battleIdle: "/enemies/e06_d01.png",
       battleAttack: "/enemies/e06_d02.png",

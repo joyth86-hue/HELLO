@@ -1,14 +1,11 @@
 // 仲間キャラクターの基本情報（1キャラに対して一意に定まる情報のみ）。
 // ステータスの成長テーブルなどはここに含めず lib/characters.ts 側で別管理する。
-//
-// name / element / weaponType は未確定の項目。null のものは今後埋める。
-// （コメントの見た目メモはあくまで参考で、実データではない）
 
 export interface CharacterBaseInfo {
   id: string;
-  name: string | null;
-  element: string | null;
-  weaponType: string | null;
+  name: string;
+  element: string;
+  weaponType: string;
   assets: {
     standing: string;
     battleIdle: string;
@@ -19,11 +16,10 @@ export interface CharacterBaseInfo {
 
 export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
   {
-    // 赤髪ツインテール・両手剣・炎エフェクト
     id: "c01",
-    name: null,
-    element: null,
-    weaponType: null,
+    name: "アカネ",
+    element: "炎",
+    weaponType: "片手剣",
     assets: {
       standing: "/characters/c01_t01.png",
       battleIdle: "/characters/c01_d01.png",
@@ -32,11 +28,10 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
     },
   },
   {
-    // 白緑髪・魔導書・自然/精霊風エフェクト
     id: "c02",
-    name: null,
-    element: null,
-    weaponType: null,
+    name: "カエデ",
+    element: "草",
+    weaponType: "法器",
     assets: {
       standing: "/characters/c02_t01.png",
       battleIdle: "/characters/c02_d01.png",
@@ -45,11 +40,10 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
     },
   },
   {
-    // 銀髪・魔導書・氷/結晶エフェクト
     id: "c03",
-    name: null,
-    element: null,
-    weaponType: null,
+    name: "コユキ",
+    element: "氷",
+    weaponType: "法器",
     assets: {
       standing: "/characters/c03_t01.png",
       battleIdle: "/characters/c03_d01.png",
@@ -58,11 +52,10 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
     },
   },
   {
-    // 茶髪・弓
     id: "c04",
-    name: null,
-    element: null,
-    weaponType: null,
+    name: "サユミ",
+    element: "草",
+    weaponType: "弓",
     assets: {
       standing: "/characters/c04_t01.png",
       battleIdle: "/characters/c04_d01.png",
