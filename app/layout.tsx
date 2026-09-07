@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "あきくんゲームズ",
-  description: "あきくんゲームズ - mini game collection",
+  title: "hiro games",
+  description: "hiro games",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

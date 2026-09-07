@@ -1,5 +1,5 @@
 // ブラウザのlocalStorageにセーブデータを保存するための共通ヘルパー。
-// ゲーム全体で共有するデータ（通貨・ユーザー名など）と、ゲームごとの個別データを分けて管理する。
+// ゲーム全体で共有するデータ（通貨など）と、ゲームごとの個別データを分けて管理する。
 // 詳細な仕様は docs/spec/save-data.md を参照。
 
 const GLOBAL_KEY = "akikun-games:global";
@@ -11,12 +11,10 @@ export const CURRENCY_UNIT = "モラ";
 
 export interface GlobalSaveData {
   currency: number;
-  userName: string;
 }
 
 const defaultGlobalData: GlobalSaveData = {
   currency: 0,
-  userName: "",
 };
 
 function clampCurrency(value: number): number {
@@ -51,13 +49,6 @@ export function saveGlobalData(data: GlobalSaveData) {
 export function addCurrency(amount: number): GlobalSaveData {
   const current = loadGlobalData();
   const next = { ...current, currency: clampCurrency(current.currency + amount) };
-  saveGlobalData(next);
-  return next;
-}
-
-export function setUserName(name: string): GlobalSaveData {
-  const current = loadGlobalData();
-  const next = { ...current, userName: name };
   saveGlobalData(next);
   return next;
 }

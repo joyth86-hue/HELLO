@@ -10,7 +10,7 @@
 
 | 種類 | キー | 内容 |
 | --- | --- | --- |
-| 共有データ（全ゲーム共通） | `akikun-games:global` | ユーザー名、共通通貨など、ゲームをまたいで使うデータ |
+| 共有データ（全ゲーム共通） | `akikun-games:global` | 共通通貨など、ゲームをまたいで使うデータ |
 | ゲームごとのデータ | `akikun-games:game:<gameId>`（例: `akikun-games:game:game1`） | そのゲーム内でのみ使う進行状況など |
 
 ## 共有データ（`GlobalSaveData`）
@@ -18,23 +18,18 @@
 ```ts
 interface GlobalSaveData {
   currency: number; // 共通通貨（モラ）
-  userName: string; // ユーザー名（未登録時は空文字）
 }
 ```
 
 ### 共通通貨（モラ）
 
-- 単位表示：「モラ」（[user-profile.md](./user-profile.md) のユーザー名とは別概念）
+- 単位表示：「モラ」
 - 最小値：0
 - 最大値：99,999,999
 - 上記の範囲を超えないよう、保存時に自動でクランプ（丸め込み）される
 - `addCurrency(amount)` で増減し、戻り値として更新後のデータを受け取れる
 - 表示用に `formatCurrency(amount)` で「12,345 モラ」のような3桁区切り＋単位の文字列に変換できる
 - **全ゲームで共有**。Game 1で稼いだ通貨をGame 2やGame 3でも参照・消費できるようにする、というのがこの仕組みの目的
-
-### ユーザー名（`userName`）
-
-詳細は [user-profile.md](./user-profile.md) を参照。
 
 ## ゲームごとのデータ
 

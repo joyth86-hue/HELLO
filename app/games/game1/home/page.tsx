@@ -47,7 +47,7 @@ export default function Game1HomePage() {
 
       <button className={`${stickerButton} rounded-full px-8 py-3`}>バッグの中身</button>
 
-      <Link href="/menu" className={`${stickerButton} rounded-full px-8 py-3`}>
+      <Link href="/" className={`${stickerButton} rounded-full px-8 py-3`}>
         ゲームを終了
       </Link>
     </div>

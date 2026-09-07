@@ -2,96 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Logo } from "@/components/Logo";
-import { stickerButton, stickerButtonDisabled } from "@/lib/ui";
-import { loadGlobalData, setUserName } from "@/lib/storage";
 
-type Status = "checking" | "onboarding-input" | "onboarding-confirm" | "ready";
-
-export default function StartPage() {
+export default function AppStartPage() {
   const router = useRouter();
-  const [status, setStatus] = useState<Status>("checking");
-  const [nameInput, setNameInput] = useState("");
-  const [loginName, setLoginName] = useState("");
+  const [showTitle, setShowTitle] = useState(false);
 
   useEffect(() => {
-    const data = loadGlobalData();
-    if (data.userName) {
-      setLoginName(data.userName);
-      setStatus("ready");
-    } else {
-      setStatus("onboarding-input");
-    }
-  }, []);
-
-  const handleSubmitName = () => {
-    if (!nameInput.trim()) return;
-    setStatus("onboarding-confirm");
-  };
-
-  const handleConfirmYes = () => {
-    const trimmed = nameInput.trim();
-    const updated = setUserName(trimmed);
-    setLoginName(updated.userName);
-    setStatus("ready");
-  };
-
-  const handleConfirmNo = () => {
-    setStatus("onboarding-input");
-  };
+    const t1 = window.setTimeout(() => setShowTitle(true), 1000);
+    const t2 = window.setTimeout(() => router.push("/games/game1"), 2500);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [router]);
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center gap-16 bg-background p-6 text-center">
-      {status === "ready" && loginName && (
-        <p className="absolute left-4 top-4 text-sm font-medium text-zinc-700">
-          ログイン名：{loginName}
-        </p>
-      )}
-
-      <Logo className="animate-fade-up" />
-
-      {status === "onboarding-input" && (
-        <div className="flex w-full max-w-xs flex-col items-center gap-4">
-          <p className="text-lg font-medium text-black">あなたのお名前は？</p>
-          <input
-            type="text"
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            maxLength={20}
-            className="w-full rounded-lg border-2 border-black bg-white px-4 py-3 text-center text-black outline-none"
-            placeholder="なまえ"
-          />
-          <button
-            onClick={handleSubmitName}
-            disabled={!nameInput.trim()}
-            className={`rounded-full px-10 py-3 ${nameInput.trim() ? stickerButton : stickerButtonDisabled}`}
-          >
-            OK
-          </button>
-        </div>
-      )}
-
-      {status === "onboarding-confirm" && (
-        <div className="flex w-full max-w-xs flex-col items-center gap-6">
-          <p className="text-lg font-medium text-black">
-            {nameInput.trim()}さんでいいですか？
-          </p>
-          <div className="flex gap-4">
-            <button onClick={handleConfirmYes} className={`${stickerButton} rounded-full px-8 py-3`}>
-              はい
-            </button>
-            <button onClick={handleConfirmNo} className={`${stickerButton} rounded-full px-8 py-3`}>
-              いいえ
-            </button>
-          </div>
-        </div>
-      )}
-
-      {status === "ready" && (
-        <button onClick={() => router.push("/menu")} className={`${stickerButton} rounded-full px-12 py-4 text-lg`}>
-          Start
-        </button>
-      )}
+    <div className="flex h-screen w-full touch-none items-center justify-center overflow-hidden bg-black">
+      <p
+        className={`text-3xl font-bold tracking-wide text-white transition-opacity duration-[800ms] ${
+          showTitle ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        hiro games
+      </p>
     </div>
   );
 }
