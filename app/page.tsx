@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Logo } from "@/components/Logo";
 import { loadGlobalData, setUserName } from "@/lib/storage";
 
 type Status = "checking" | "onboarding-input" | "onboarding-confirm" | "ready";
@@ -46,9 +47,7 @@ export default function StartPage() {
         </p>
       )}
 
-      <h1 className="text-4xl font-bold tracking-wide text-black sm:text-5xl">
-        あきくんゲームス
-      </h1>
+      <Logo className="animate-fade-up" />
 
       {status === "onboarding-input" && (
         <div className="flex w-full max-w-xs flex-col items-center gap-4">
