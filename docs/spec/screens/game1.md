@@ -1,6 +1,6 @@
 # Game 1（`/games/game1`）
 
-実装: [app/games/game1/page.tsx](../../../app/games/game1/page.tsx)
+実装: [app/games/game1/page.tsx](../../../app/games/game1/page.tsx)、背景切り替え: [lib/background.ts](../../../lib/background.ts)
 
 ## 現状
 
@@ -11,6 +11,18 @@
 - 「通貨を10稼ぐ（テスト用）」ボタン：押すと共通通貨が10増える。共有通貨の仕組みの動作確認用
 - 「キャラクター」ボタン：[キャラクター確認画面](./character-view.md)（`/games/game1/character`）に遷移する
 - 「ゲーム選択に戻る」ボタン：`/menu` に戻る
+
+### 背景画像（時間帯で切り替え）
+
+画面を開いた時点の端末時刻（`new Date().getHours()`）に応じて、背景いっぱいに3種類のうちいずれかの画像を表示する。時刻判定は初回表示時の一度きりで、画面を開いたまま時間をまたいでも自動では切り替わらない。
+
+| 時間帯 | 時刻 | 画像 |
+| --- | --- | --- |
+| 昼 | 5:00〜15:59 | `public/backgrounds/top01.png` |
+| 夕方 | 16:00〜18:59 | `public/backgrounds/top02.png` |
+| 夜 | 19:00〜4:59 | `public/backgrounds/top03.png` |
+
+背景画像の上に乗るUI（見出し・ステータスカード・ボタン）は、どの背景でも読みやすいよう白地＋黒縁のステッカー風スタイルのまま重ねている。
 
 ## 今後
 
