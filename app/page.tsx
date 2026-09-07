@@ -18,13 +18,13 @@ export default function AppStartPage() {
 
   return (
     <div className="flex h-screen w-full touch-none items-center justify-center overflow-hidden bg-black">
-      <p
-        className={`text-3xl font-bold tracking-wide text-white transition-opacity duration-[800ms] ${
+      <img
+        src="/logos/l01.png"
+        alt="hiro games"
+        className={`w-2/3 max-w-xs transition-opacity duration-[800ms] ${
           showTitle ? "opacity-100" : "opacity-0"
         }`}
-      >
-        hiro games
-      </p>
+      />
     </div>
   );
 }
