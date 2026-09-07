@@ -15,6 +15,7 @@ CLAUDE.md本体には仕様を書かず、常にこの分冊側を更新する�
 | [screens/character-view.md](./screens/character-view.md) | キャラクター確認画面の仕様 |
 | [save-data.md](./save-data.md) | セーブデータ（共有データ／ゲームごとのデータ）の仕様 |
 | [characters.md](./characters.md) | キャラクター素材（画像）の管理方法 |
+| [fields.md](./fields.md) | 戦闘背景（フィールド）素材の管理方法 |
 | [visual-design.md](./visual-design.md) | 配色などビジュアルデザインの方針 |
 
 ## 今後ファイルが増える場合の目安
