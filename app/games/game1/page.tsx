@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBackgroundImage } from "@/lib/background";
 
-type Stage = "initial" | "bg" | "logo" | "ready";
+type Stage = "initial" | "bg" | "logo" | "ready" | "loading";
 
 const TEXT_SHADOW = "0 2px 10px rgba(0,0,0,0.55), 0 0 4px rgba(0,0,0,0.8)";
+const LOADING_TEXT = "Now Loading...";
+const LOADING_DURATION = 1800;
 
 export default function Game1StartPage() {
   const router = useRouter();
@@ -28,7 +30,10 @@ export default function Game1StartPage() {
 
   const handleTap = () => {
     if (stage !== "ready") return;
-    router.push("/games/game1/home");
+    setStage("loading");
+    window.setTimeout(() => {
+      router.push("/games/game1/home");
+    }, LOADING_DURATION);
   };
 
   return (
@@ -68,6 +73,34 @@ export default function Game1StartPage() {
         >
           タップして開始する
         </p>
+      </div>
+
+      <div
+        className={`absolute inset-0 flex flex-col items-center justify-center gap-6 bg-black transition-opacity duration-500 ${
+          stage === "loading" ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        {stage === "loading" && (
+          <>
+            <p
+              className="flex text-base font-bold tracking-wide text-white"
+              style={{ fontFamily: '"M PLUS Rounded 1c", "Zen Kaku Gothic New", sans-serif' }}
+            >
+              {LOADING_TEXT.split("").map((char, i) => (
+                <span
+                  key={i}
+                  className="inline-block animate-bounce-char"
+                  style={{ animationDelay: `${i * 0.08}s` }}
+                >
+                  {char === " " ? " " : char}
+                </span>
+              ))}
+            </p>
+            <div className="h-2 w-2/3 max-w-[220px] rounded-full border-[1.5px] border-white p-[2px]">
+              <div className="h-full rounded-full bg-white animate-fill-bar" />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -26,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Hachi+Maru+Pop&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Hachi+Maru+Pop&family=M+PLUS+Rounded+1c:wght@500;700&display=swap"
         />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>

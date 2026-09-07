@@ -16,7 +16,7 @@
 ```
 / (アプリ起動画面：黒背景→「hiro games」フェードイン、自動遷移)
   └─ 約2.5秒後、自動的に → /games/game1 (Game1開始画面：背景/タイトルのフェード演出)
-                                └─ 演出後、画面タップ → /games/game1/home (ホーム画面)
+                                └─ 演出後、画面タップ → 暗転＋Now Loading演出（約1.8秒）→ /games/game1/home (ホーム画面)
                                                             ├─ 「冒険する」（未実装）
                                                             ├─ 「キャラクター」→ /games/game1/character
                                                             │                       └─ ✕ボタン → /games/game1/home に戻る
