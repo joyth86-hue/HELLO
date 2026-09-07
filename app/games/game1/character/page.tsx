@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { stickerButton } from "@/lib/ui";
+import { CHARACTERS, getCharacterByIndex } from "@/lib/characters";
 
-const CHARACTER_IDS = ["c01", "c02", "c03", "c04"];
 const SWIPE_THRESHOLD = 60;
 const SNAP_DURATION = 250;
 
@@ -18,7 +18,7 @@ function CharacterPane({ id }: { id: string }) {
       <img
         src={`/characters/${id}_t01.png`}
         alt={id}
-        className="max-h-[85vh] w-auto max-w-full select-none"
+        className="max-h-full max-w-full select-none object-contain"
         draggable={false}
       />
     </div>
@@ -29,12 +29,13 @@ export default function CharacterViewPage() {
   const [index, setIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [isSettling, setIsSettling] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const pointerStartX = useRef<number | null>(null);
 
-  const prevId = CHARACTER_IDS[mod(index - 1, CHARACTER_IDS.length)];
-  const currentId = CHARACTER_IDS[index];
-  const nextId = CHARACTER_IDS[mod(index + 1, CHARACTER_IDS.length)];
+  const stats = getCharacterByIndex(index);
+  const prevId = CHARACTERS[mod(index - 1, CHARACTERS.length)].id;
+  const currentId = CHARACTERS[index].id;
+  const nextId = CHARACTERS[mod(index + 1, CHARACTERS.length)].id;
 
   const settle = (target: number, direction: 1 | -1 | 0) => {
     setIsSettling(true);
@@ -43,7 +44,7 @@ export default function CharacterViewPage() {
       setIsSettling(false);
       setDragX(0);
       if (direction !== 0) {
-        setIndex((i) => mod(i + direction, CHARACTER_IDS.length));
+        setIndex((i) => mod(i + direction, CHARACTERS.length));
       }
     }, SNAP_DURATION);
   };
@@ -55,7 +56,7 @@ export default function CharacterViewPage() {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (pointerStartX.current === null || isSettling) return;
-    const width = containerRef.current?.offsetWidth || 1;
+    const width = frameRef.current?.offsetWidth || 1;
     const delta = e.clientX - pointerStartX.current;
     setDragX(Math.max(-width, Math.min(width, delta)));
   };
@@ -63,7 +64,7 @@ export default function CharacterViewPage() {
   const endDrag = () => {
     if (pointerStartX.current === null) return;
     pointerStartX.current = null;
-    const width = containerRef.current?.offsetWidth || 1;
+    const width = frameRef.current?.offsetWidth || 1;
 
     if (dragX <= -SWIPE_THRESHOLD) {
       settle(-width, 1);
@@ -75,14 +76,7 @@ export default function CharacterViewPage() {
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="relative h-screen w-full touch-pan-y overflow-hidden bg-background"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-    >
+    <div className="relative flex h-screen flex-col bg-background">
       <Link
         href="/games/game1"
         aria-label="Game1のメイン画面に戻る"
@@ -94,17 +88,54 @@ export default function CharacterViewPage() {
         </svg>
       </Link>
 
-      <div
-        className="flex h-full"
-        style={{
-          width: "300%",
-          transform: `translateX(calc(-33.3333% + ${dragX}px))`,
-          transition: isSettling ? `transform ${SNAP_DURATION}ms ease-out` : "none",
-        }}
-      >
-        <CharacterPane id={prevId} />
-        <CharacterPane id={currentId} />
-        <CharacterPane id={nextId} />
+      <div className="px-4 pr-20 pt-4">
+        <p className="mb-1.5 text-[11px] font-medium tracking-wide text-zinc-500">STATUS</p>
+        <div className="rounded-xl bg-[#eef6f1] px-3.5 py-2.5 text-sm text-black">
+          <div className="flex justify-between">
+            <span>HP</span>
+            <span className="font-bold tabular-nums">{stats.hp.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>攻撃力</span>
+            <span className="font-bold tabular-nums">{stats.atk.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>防御力</span>
+            <span className="font-bold tabular-nums">{stats.def.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-1 items-center justify-center overflow-hidden px-6 py-3">
+        <div
+          ref={frameRef}
+          className="relative aspect-[2/3] h-auto max-h-full w-full max-w-[340px] touch-pan-y overflow-hidden rounded-xl border-4 border-black bg-[#fffaf0] p-1.5 shadow-[inset_0_0_0_4px_#fffaf0,inset_0_0_0_5px_#171717]"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+        >
+          <div
+            className="flex h-full"
+            style={{
+              width: "300%",
+              transform: `translateX(calc(-33.3333% + ${dragX}px))`,
+              transition: isSettling ? `transform ${SNAP_DURATION}ms ease-out` : "none",
+            }}
+          >
+            <CharacterPane id={prevId} />
+            <CharacterPane id={currentId} />
+            <CharacterPane id={nextId} />
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 pb-4">
+        <p className="mb-1.5 text-[11px] font-medium tracking-wide text-zinc-500">育成メニュー</p>
+        <div className="flex gap-3">
+          <button className={`${stickerButton} flex-1 rounded-full py-2.5`}>装備</button>
+          <button className={`${stickerButton} flex-1 rounded-full py-2.5`}>スキル</button>
+        </div>
       </div>
     </div>
   );
