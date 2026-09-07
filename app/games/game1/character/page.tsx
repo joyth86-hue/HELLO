@@ -78,7 +78,7 @@ export default function CharacterViewPage() {
   return (
     <div className="relative flex h-screen touch-none flex-col overflow-hidden bg-background">
       <Link
-        href="/games/game1"
+        href="/games/game1/home"
         aria-label="Game1のメイン画面に戻る"
         className={`${stickerButton} absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full`}
       >

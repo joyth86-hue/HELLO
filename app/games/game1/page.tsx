@@ -1,76 +1,73 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import {
-  addCurrency,
-  formatCurrency,
-  loadGameData,
-  loadGlobalData,
-  saveGameData,
-} from "@/lib/storage";
-import { stickerButton } from "@/lib/ui";
+import { useRouter } from "next/navigation";
 import { getBackgroundImage } from "@/lib/background";
 
-interface Game1SaveData {
-  playCount: number;
-}
+type Stage = "initial" | "bg" | "logo" | "ready";
 
-const GAME_ID = "game1";
-const defaultGame1Data: Game1SaveData = { playCount: 0 };
+const TEXT_SHADOW = "0 2px 10px rgba(0,0,0,0.55), 0 0 4px rgba(0,0,0,0.8)";
 
-export default function Game1Page() {
-  const [currency, setCurrency] = useState(0);
-  const [playCount, setPlayCount] = useState(0);
+export default function Game1StartPage() {
+  const router = useRouter();
   const [background, setBackground] = useState<string | null>(null);
+  const [stage, setStage] = useState<Stage>("initial");
 
   useEffect(() => {
-    setCurrency(loadGlobalData().currency);
     setBackground(getBackgroundImage(new Date()));
 
-    const data = loadGameData(GAME_ID, defaultGame1Data);
-    const next = { ...data, playCount: data.playCount + 1 };
-    saveGameData(GAME_ID, next);
-    setPlayCount(next.playCount);
+    const t1 = window.setTimeout(() => setStage("bg"), 100);
+    const t2 = window.setTimeout(() => setStage("logo"), 1100);
+    const t3 = window.setTimeout(() => setStage("ready"), 2000);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
   }, []);
 
-  const handleEarn = () => {
-    const updated = addCurrency(10);
-    setCurrency(updated.currency);
+  const handleTap = () => {
+    if (stage !== "ready") return;
+    router.push("/games/game1/home");
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
+    <div
+      className={`relative h-screen w-full overflow-hidden bg-white ${stage === "ready" ? "cursor-pointer" : ""}`}
+      onClick={handleTap}
+    >
       {background && (
         <img
           src={background}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover"
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${
+            stage === "initial" ? "opacity-0" : "opacity-100"
+          }`}
         />
       )}
 
-      <div className="relative z-10 flex min-h-screen flex-col items-center gap-8 p-6 pt-20 text-center">
-        <h1 className="rounded-full border-2 border-black bg-white px-5 py-2 text-2xl font-bold tracking-wide text-black shadow-[4px_4px_0_0_#171717]">
-          Game 1（仮画面）
-        </h1>
+      <div
+        className={`absolute inset-x-0 top-[18%] flex justify-center transition-opacity duration-700 ${
+          stage === "initial" || stage === "bg" ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <p className="text-4xl font-extrabold text-white" style={{ textShadow: TEXT_SHADOW }}>
+          Game 1
+        </p>
+      </div>
 
-        <div className="w-full max-w-sm rounded-2xl border-2 border-black bg-white p-6 text-left text-zinc-700">
-          <p>共通通貨（全ゲーム共有）: {formatCurrency(currency)}</p>
-          <p>このゲームのプレイ回数: {playCount}</p>
-        </div>
-
-        <button onClick={handleEarn} className={`${stickerButton} rounded-full px-8 py-3`}>
-          通貨を10稼ぐ（テスト用）
-        </button>
-
-        <Link href="/games/game1/character" className={`${stickerButton} rounded-full px-8 py-3`}>
-          キャラクター
-        </Link>
-
-        <Link href="/menu" className={`${stickerButton} rounded-full px-8 py-3`}>
-          ゲーム選択に戻る
-        </Link>
+      <div
+        className={`absolute inset-x-0 bottom-[16%] flex justify-center transition-opacity duration-700 ${
+          stage === "ready" ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <p
+          className={`text-lg font-semibold text-white ${stage === "ready" ? "animate-pulse" : ""}`}
+          style={{ textShadow: TEXT_SHADOW }}
+        >
+          タップして開始する
+        </p>
       </div>
     </div>
   );

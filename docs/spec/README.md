@@ -11,7 +11,8 @@ CLAUDE.md本体には仕様を書かず、常にこの分冊側を更新する�
 | [screen-flow.md](./screen-flow.md) | 画面全体の構成・遷移フロー |
 | [screens/start.md](./screens/start.md) | スタート画面の仕様 |
 | [screens/menu.md](./screens/menu.md) | ゲームメニュー画面の仕様 |
-| [screens/game1.md](./screens/game1.md) | Game 1（仮画面）の仕様 |
+| [screens/game1.md](./screens/game1.md) | Game 1 開始画面（背景/タイトルのフェード演出）の仕様 |
+| [screens/game1-home.md](./screens/game1-home.md) | Game 1 ホーム画面（冒険する/キャラクター/バッグの中身/ゲームを終了）の仕様 |
 | [screens/character-view.md](./screens/character-view.md) | キャラクター確認画面の仕様 |
 | [user-profile.md](./user-profile.md) | ユーザー名登録・ログイン表示の仕様 |
 | [save-data.md](./save-data.md) | セーブデータ（共有データ／ゲームごとのデータ）の仕様 |
