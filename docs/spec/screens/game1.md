@@ -23,8 +23,9 @@
 
 - 画面全体が黒地のオーバーレイでフェードアウト（`transition-opacity duration-500`）
 - 黒背景の上に、白文字で「Now Loading...」を表示。1文字ずつ左から順に少し遅れて跳ねるアニメーション（`animate-bounce-char`、[app/globals.css](../../../app/globals.css)）。フォントは丸みのある「M PLUS Rounded 1c」
-- その下に、横長のバー（白い縁取り＋白い塗りつぶし）が左から右に一度だけ満タンになるアニメーション（`animate-fill-bar`、1.6秒）
-- バーが満タンになるのに合わせて（タップから`LOADING_DURATION`＝1800ms後）、自動的にホーム画面（`/games/game1/home`）へ遷移する
+- その下に、横長のバー（白い縁取り＋白い塗りつぶし）が左から右に一度だけ満タンになるアニメーション（`animate-fill-bar`、1.2秒）
+- バーが満タンになるのに合わせて（タップから`LOADING_DURATION`＝1400ms後）、自動的にホーム画面（`/games/game1/home`）へ遷移する
+- ホーム画面への遷移が実際の操作待ちにならないよう、この開始画面が表示された時点で `router.prefetch("/games/game1/home")` により先読みしておく
 
 この画面もスクロール不要なため、`touch-action: none`（Tailwindの`touch-none`）を指定し、上下方向のブラウザ標準スワイプ（スクロール）を無効化している（[character-view.md](./character-view.md)と同様の対応）。
 

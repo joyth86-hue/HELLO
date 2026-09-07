@@ -8,7 +8,7 @@ type Stage = "initial" | "bg" | "logo" | "ready" | "loading";
 
 const TEXT_SHADOW = "0 2px 10px rgba(0,0,0,0.55), 0 0 4px rgba(0,0,0,0.8)";
 const LOADING_TEXT = "Now Loading...";
-const LOADING_DURATION = 1800;
+const LOADING_DURATION = 1400;
 
 export default function Game1StartPage() {
   const router = useRouter();
@@ -17,6 +17,7 @@ export default function Game1StartPage() {
 
   useEffect(() => {
     setBackground(getBackgroundImage(new Date()));
+    router.prefetch("/games/game1/home");
 
     const t1 = window.setTimeout(() => setStage("bg"), 100);
     const t2 = window.setTimeout(() => setStage("logo"), 1100);
@@ -26,7 +27,7 @@ export default function Game1StartPage() {
       window.clearTimeout(t2);
       window.clearTimeout(t3);
     };
-  }, []);
+  }, [router]);
 
   const handleTap = () => {
     if (stage !== "ready") return;

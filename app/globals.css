@@ -64,7 +64,7 @@ body {
 }
 
 .animate-fill-bar {
-  animation: fill-bar 1.6s ease-in-out forwards;
+  animation: fill-bar 1.2s ease-in-out forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
