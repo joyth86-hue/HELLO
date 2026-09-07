@@ -33,7 +33,7 @@ export default function Game1StartPage() {
 
   return (
     <div
-      className={`relative h-screen w-full overflow-hidden bg-white ${stage === "ready" ? "cursor-pointer" : ""}`}
+      className={`relative h-screen w-full touch-none overflow-hidden bg-white ${stage === "ready" ? "cursor-pointer" : ""}`}
       onClick={handleTap}
     >
       {background && (
