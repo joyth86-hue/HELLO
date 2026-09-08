@@ -42,9 +42,11 @@ export default function Game1HomePage() {
           <p>このゲームのプレイ回数: {playCount}</p>
         </div>
 
-        {/* 戦闘画面の動作確認用の仮ボタン。正式な入り口が決まったら撤去する。 */}
-        <Link href="/games/game1/battle" className={`${stickerButton} rounded-full px-8 py-3`}>
-          ⚔ 戦闘テスト（仮）
+        <Link
+          href="/games/game1/stages"
+          className={`${stickerButton} mt-auto rounded-full px-8 py-3`}
+        >
+          冒険に行く
         </Link>
       </div>
     </div>

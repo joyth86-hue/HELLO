@@ -22,6 +22,10 @@ export interface Game1SaveData {
   playCount: number;
   inventory: InventoryEntry[];
   equipment: EquipmentState;
+  // クリア済みの最大ステージ番号（0=まだ1つもクリアしていない＝ステージ1のみ挑戦可）。
+  maxClearedStage: number;
+  // バトルに参加させる（編成中の）キャラクターID。最大3人。
+  activePartyIds: string[];
 }
 
 export const GAME1_ID = "game1";
@@ -33,6 +37,47 @@ export function getCharacterEquipment(
   characterId: string
 ): CharacterEquipment {
   return data.equipment[characterId] ?? EMPTY_EQUIPMENT;
+}
+
+export const MAX_PARTY_SIZE = 3;
+
+// キャラクターが仲間になるステージ（そのステージ番号をクリアした時点で解放）。
+// 未掲載のキャラクターは最初から解放済み扱い。
+// 参照: docs/spec/screens/adventure.md
+export const CHARACTER_UNLOCK_STAGE: Record<string, number> = {
+  c03: 3, // コユキ
+  c02: 6, // カエデ
+  c04: 9, // サユミ
+};
+
+// キャラクターが仲間になる順番（c01は最初から仲間）。
+export const CHARACTER_UNLOCK_ORDER = ["c01", "c03", "c02", "c04"];
+
+export function isCharacterUnlocked(data: Game1SaveData, characterId: string): boolean {
+  const requiredStage = CHARACTER_UNLOCK_STAGE[characterId] ?? 0;
+  return data.maxClearedStage >= requiredStage;
+}
+
+export function getUnlockedCharacterIds(data: Game1SaveData): string[] {
+  return CHARACTER_UNLOCK_ORDER.filter((id) => isCharacterUnlocked(data, id));
+}
+
+// 新しく仲間になったキャラクターを、編成人数が3人未満の間は自動で編成に加える
+// （「4人揃うまではデフォルトでON、それ以降は手動で入れ替える」という仕様のため）。
+export function syncActivePartyWithUnlocks(data: Game1SaveData): Game1SaveData {
+  const unlocked = getUnlockedCharacterIds(data);
+  const active = data.activePartyIds.filter((id) => unlocked.includes(id));
+  for (const id of unlocked) {
+    if (active.length >= MAX_PARTY_SIZE) break;
+    if (!active.includes(id)) active.push(id);
+  }
+  if (
+    active.length === data.activePartyIds.length &&
+    active.every((id, i) => id === data.activePartyIds[i])
+  ) {
+    return data;
+  }
+  return { ...data, activePartyIds: active };
 }
 
 // 敵を倒す・報酬をもらうといった「アイテムを入手する仕組み」がまだ無いため、
@@ -53,6 +98,8 @@ export const defaultGame1Data: Game1SaveData = {
     { itemId: "i226", quantity: 1 },
   ],
   equipment: {},
+  maxClearedStage: 0,
+  activePartyIds: ["c01"],
 };
 
 export function loadGame1Data(): Game1SaveData {

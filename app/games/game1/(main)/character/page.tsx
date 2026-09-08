@@ -5,8 +5,11 @@ import { CHARACTERS, getCharacterByIndex } from "@/lib/characters";
 import { getCharacterBaseInfo } from "@/lib/characters-info";
 import {
   getCharacterEquipment,
+  getUnlockedCharacterIds,
   loadGame1Data,
   saveGame1Data,
+  syncActivePartyWithUnlocks,
+  MAX_PARTY_SIZE,
   type CharacterEquipment,
   type Game1SaveData,
 } from "@/lib/game1-data";
@@ -72,22 +75,29 @@ export default function CharacterViewPage() {
   const [isSettling, setIsSettling] = useState(false);
   const [saveData, setSaveData] = useState<Game1SaveData | null>(null);
   const [picker, setPicker] = useState<PickerTarget | null>(null);
+  const [partyWarning, setPartyWarning] = useState(false);
   const frameRef = useRef<HTMLDivElement>(null);
   const pointerStartX = useRef<number | null>(null);
 
   useEffect(() => {
-    setSaveData(loadGame1Data());
+    const synced = syncActivePartyWithUnlocks(loadGame1Data());
+    saveGame1Data(synced);
+    setSaveData(synced);
   }, []);
 
   useEffect(() => {
     setPicker(null);
   }, [index]);
 
-  const stats = getCharacterByIndex(index);
-  const prevId = CHARACTERS[mod(index - 1, CHARACTERS.length)].id;
-  const currentId = CHARACTERS[index].id;
-  const nextId = CHARACTERS[mod(index + 1, CHARACTERS.length)].id;
+  const unlockedIds = saveData ? getUnlockedCharacterIds(saveData) : ["c01"];
+  const unlockedCharacters = CHARACTERS.filter((c) => unlockedIds.includes(c.id));
+  const safeIndex = mod(index, unlockedCharacters.length);
+  const stats = getCharacterByIndex(CHARACTERS.indexOf(unlockedCharacters[safeIndex]));
+  const prevId = unlockedCharacters[mod(safeIndex - 1, unlockedCharacters.length)].id;
+  const currentId = unlockedCharacters[safeIndex].id;
+  const nextId = unlockedCharacters[mod(safeIndex + 1, unlockedCharacters.length)].id;
   const currentBaseInfo = getCharacterBaseInfo(currentId);
+  const isInParty = saveData ? saveData.activePartyIds.includes(currentId) : false;
 
   const currentEquipment = saveData ? getCharacterEquipment(saveData, currentId) : EMPTY_EQUIPMENT;
   const weaponItem = currentEquipment.weapon ? getItemBaseInfo(currentEquipment.weapon) : undefined;
@@ -115,6 +125,22 @@ export default function CharacterViewPage() {
       (o) => o.item.type === "アーティファクト" && !equippedElsewhere.has(o.item.id)
     );
   }, [picker, owned, currentBaseInfo, currentEquipment]);
+
+  function toggleParty() {
+    if (!saveData) return;
+    const isMember = saveData.activePartyIds.includes(currentId);
+    if (!isMember && saveData.activePartyIds.length >= MAX_PARTY_SIZE) {
+      setPartyWarning(true);
+      window.setTimeout(() => setPartyWarning(false), 1600);
+      return;
+    }
+    const nextActive = isMember
+      ? saveData.activePartyIds.filter((id) => id !== currentId)
+      : [...saveData.activePartyIds, currentId];
+    const next: Game1SaveData = { ...saveData, activePartyIds: nextActive };
+    saveGame1Data(next);
+    setSaveData(next);
+  }
 
   function updateEquipment(next: CharacterEquipment) {
     if (!saveData) return;
@@ -164,7 +190,7 @@ export default function CharacterViewPage() {
       setIsSettling(false);
       setDragX(0);
       if (direction !== 0) {
-        setIndex((i) => mod(i + direction, CHARACTERS.length));
+        setIndex((i) => mod(i + direction, unlockedCharacters.length));
       }
     }, SNAP_DURATION);
   };
@@ -216,6 +242,27 @@ export default function CharacterViewPage() {
               <span className="font-bold tabular-nums">{stats.def.toLocaleString()}</span>
             </div>
           </div>
+
+          <button
+            onClick={toggleParty}
+            className="mt-2 flex w-full items-center gap-2 rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2 text-left text-sm text-[#eee9ff] backdrop-blur-sm"
+          >
+            <span
+              className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border-2 ${
+                isInParty ? "border-[#c9c3ff] bg-[#c9c3ff]" : "border-[rgba(201,195,255,0.5)] bg-transparent"
+              }`}
+            >
+              {isInParty && (
+                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                  <path d="M2 6l3 3 5-6" stroke="#171717" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </span>
+            バトルに参加
+            {partyWarning && (
+              <span className="ml-auto text-[11px] font-bold text-[#ff9a9a]">最大3人まで</span>
+            )}
+          </button>
         </div>
 
         <div className="flex flex-1 items-center justify-center overflow-hidden px-6 py-3">

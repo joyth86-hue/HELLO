@@ -53,12 +53,16 @@ interface Game1SaveData {
   playCount: number; // Game1画面を開いた回数
   inventory: InventoryEntry[]; // 所持アイテム（バッグの中身画面で使用）
   equipment: Record<string, CharacterEquipment>; // キャラID → 装備（キャラクター確認画面で使用）
+  maxClearedStage: number; // クリア済みの最大ステージ番号（0=未クリア）
+  activePartyIds: string[]; // バトルに参加させるキャラID（最大3人）
 }
 ```
 
 `inventory`は現状、アイテムを入手する仕組み（敵を倒す・報酬をもらうなど）が無いため、[バッグの中身画面](./screens/bag.md)の表示確認用にテストデータ（10種類）を初期値として持たせている。入手システムが決まったら、この初期値は撤去する想定。
 
 `equipment`はキーにキャラクターIDが無い（＝一度も装備操作をしていない）場合、装備なし（`{ weapon: null, artifacts: [null, null, null] }`）として扱う（`getCharacterEquipment()`ヘルパー）。詳細は[character-view.md](./screens/character-view.md)参照。
+
+`maxClearedStage` / `activePartyIds`は[冒険システム設計](./adventure-system.md)で使う。キャラクターの仲間解放は`maxClearedStage`から`isCharacterUnlocked()`で判定し、新しく解放されたキャラクターは編成が3人未満なら`syncActivePartyWithUnlocks()`で自動的に`activePartyIds`へ追加する。
 
 ## 命名の補足
 

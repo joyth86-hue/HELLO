@@ -4,10 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCharacterBaseInfo } from "@/lib/characters-info";
 import { getEnemyBaseInfo } from "@/lib/enemies-info";
+import { loadGame1Data, saveGame1Data } from "@/lib/game1-data";
 
 // テスト用の戦闘画面。まだ実際のパーティ編成・敵の出現テーブルとは
 // 繋がっておらず、以下の仮データ・仮ステータスで通常攻撃だけを
 // 一巡させて動作確認するためのもの。詳細はdocs/spec/screens/battle-test.md参照。
+//
+// ステージ選択画面（/games/game1/stages）からは ?stage=N 付きで遷移してくる。
+// 実際の10バトル連戦・敵構成のステージ切り替えはまだ未実装で、勝利した場合に
+// そのステージ番号をmaxClearedStageに反映するところまでを先行してつないでいる
+// （ステージ進行・キャラクター解放の動作確認のため）。
 const TEST_ALLY_IDS = ["c01", "c02", "c03"];
 const TEST_ENEMY_IDS = ["e01", "e02", "e03"];
 const UNIT_HP = 200;
@@ -90,10 +96,12 @@ export default function BattleTestPage() {
   const [awaitingPlayer, setAwaitingPlayer] = useState(false);
   const [result, setResult] = useState<"victory" | "defeat" | null>(null);
   const [turnMessage, setTurnMessage] = useState("");
+  const [stageLabel, setStageLabel] = useState(1);
 
   const unitsRef = useRef<BattleUnit[]>(units);
   const startedRef = useRef(false);
   const resolvePlayerActionRef = useRef<(() => void) | null>(null);
+  const stageNumberRef = useRef(1);
 
   function sync() {
     setUnits(unitsRef.current.map((u) => ({ ...u })));
@@ -203,6 +211,12 @@ export default function BattleTestPage() {
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stage = Number(params.get("stage"));
+    const resolvedStage = Number.isFinite(stage) && stage > 0 ? stage : 1;
+    stageNumberRef.current = resolvedStage;
+    setStageLabel(resolvedStage);
+
     if (startedRef.current) return;
     startedRef.current = true;
     const order = unitsRef.current.map((u) => u.key);
@@ -212,6 +226,14 @@ export default function BattleTestPage() {
 
   useEffect(() => {
     if (!result) return;
+    if (result === "victory") {
+      const data = loadGame1Data();
+      const next = {
+        ...data,
+        maxClearedStage: Math.max(data.maxClearedStage, stageNumberRef.current),
+      };
+      saveGame1Data(next);
+    }
     const t = window.setTimeout(() => {
       router.push("/games/game1/home");
     }, 1800);
@@ -231,6 +253,10 @@ export default function BattleTestPage() {
         aria-hidden="true"
         className="absolute inset-0 h-full w-full object-cover"
       />
+
+      <div className="absolute left-4 top-4 z-20 rounded-full bg-black/60 px-3 py-1 text-[11px] font-bold text-white">
+        ステージ {stageLabel}
+      </div>
 
       {turnMessage && !result && (
         <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-xs font-bold text-white">
