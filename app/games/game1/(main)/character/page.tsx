@@ -10,6 +10,7 @@ import {
   loadGame1Data,
   saveGame1Data,
   syncActivePartyWithUnlocks,
+  CHARACTER_UNLOCK_ORDER,
   MAX_PARTY_SIZE,
   type CharacterEquipment,
   type Game1SaveData,
@@ -38,15 +39,22 @@ function idleFrameBackgroundPosition(frame: number) {
 
 const EMPTY_EQUIPMENT: CharacterEquipment = { weapon: null, artifacts: [null, null, null] };
 
-// キャラクターごとの背景アクセントカラー（GameBackgroundの中央上部グラデーション色）。
-// 立ち絵自体の色味と被って埋もれないよう、あえて補色寄りの色を選んでいる
+// キャラクターごとの背景色（GameBackgroundのglowColor＝中央上部のグロー、
+// textColor＝「hiro games」が流れる文字の色）。ベースのグラデーションだけ
+// でなく、流れる文字自体もキャラごとの色で塗り直すことで、画面全体が
+// はっきり別の色に見えるようにしている。立ち絵自体の色味と被って埋もれ
+// ないよう、あえて補色寄りの色を選んでいる
 // （アカネ＝赤系なのでピンク、コユキ＝青系なので紫、など）。
-const CHARACTER_BG_ACCENT: Record<string, string> = {
-  c01: "#5a2142", // アカネ（赤系の衣装に対してピンク寄りのグロー）
-  c02: "#5c3520", // カエデ（草・淡い緑系の衣装に対して暖色のグロー）
-  c03: "#452a5c", // コユキ（氷・青系の衣装に対して紫寄りのグロー）
-  c04: "#1d4a4a", // サユミ（草・茶系の衣装に対して寒色のグロー）
+const CHARACTER_BG_COLORS: Record<string, { glow: string; text: string }> = {
+  c01: { glow: "#5a2142", text: "#ff9ec9" }, // アカネ：ローズ・ピンク
+  c02: { glow: "#5c3520", text: "#ffcf8a" }, // カエデ：暖色・アンバー
+  c03: { glow: "#452a5c", text: "#d9a8ff" }, // コユキ：マゼンタ・紫
+  c04: { glow: "#1d4a4a", text: "#8ce9e0" }, // サユミ：寒色・ティール
 };
+
+// 仲間の解放状況にかかわらず、テスト用に4人全員を表示するための一時フラグ。
+// 本来の仕様（ステージクリアで順次解放）を確認したくなったらfalseに戻す。
+const DEBUG_SHOW_ALL_CHARACTERS = true;
 
 // 会心率・会心ダメージの基礎値（docs/spec/adventure-system.mdのダメージ計算式案）。
 // アーティファクトの効果値がまだ無いため、装備による上乗せ分は今は反映していない。
@@ -144,7 +152,11 @@ export default function CharacterViewPage() {
     setPicker(null);
   }, [index]);
 
-  const unlockedIds = saveData ? getUnlockedCharacterIds(saveData) : ["c01"];
+  const unlockedIds = DEBUG_SHOW_ALL_CHARACTERS
+    ? CHARACTER_UNLOCK_ORDER
+    : saveData
+      ? getUnlockedCharacterIds(saveData)
+      : ["c01"];
   const unlockedCharacters = CHARACTERS.filter((c) => unlockedIds.includes(c.id));
   const safeIndex = mod(index, unlockedCharacters.length);
   const stats = getCharacterByIndex(CHARACTERS.indexOf(unlockedCharacters[safeIndex]));
@@ -281,7 +293,10 @@ export default function CharacterViewPage() {
 
   return (
     <div className="relative h-[100dvh] touch-none overflow-hidden bg-background">
-      <GameBackground accentColor={CHARACTER_BG_ACCENT[currentId]} />
+      <GameBackground
+        glowColor={CHARACTER_BG_COLORS[currentId]?.glow}
+        textColor={CHARACTER_BG_COLORS[currentId]?.text}
+      />
 
       <div className="relative z-10 flex h-full touch-none flex-col">
         <div className="relative flex flex-shrink-0 items-center justify-center bg-black px-16 pb-3.5 pt-[calc(0.875rem_+_env(safe-area-inset-top))]">

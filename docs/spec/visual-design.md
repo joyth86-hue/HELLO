@@ -30,16 +30,22 @@ OS・ブラウザのダークモード設定に関わらず、常にこの配色
 
 ホーム画面のみ、この模様とは別に専用の背景イラストを使っている（詳細は[screens/game1-home.md](./screens/game1-home.md)参照）。
 
-### キャラクター画面：キャラクターごとの背景アクセントカラー
+### キャラクター画面：キャラクターごとに背景全体の色を変える
 
-[キャラクター確認画面](./screens/character-view.md)だけは、`GameBackground`に`accentColor`（中央上部のラジアルグラデーション色）を渡し、表示中のキャラクターごとに背景の色味を変えている。キャラクター自身の衣装の色と背景が被って埋もれないよう、あえて補色寄りの色を選んでいる（実装：[app/games/game1/(main)/character/page.tsx](<../../app/games/game1/(main)/character/page.tsx>)の`CHARACTER_BG_ACCENT`）。
+[キャラクター確認画面](./screens/character-view.md)だけは、表示中のキャラクターごとに背景の色そのものを変えている。「ベースのグラデーション（中央上部のグロー）」と「hiro gamesが流れる文字」の**両方**をキャラクターの色に染めることで、「その色の中をhiro gamesの文字が流れている」という見え方になるようにしている（文字色だけ据え置きで背景がうっすら変わる、という中途半端な見た目にはしない）。
 
-| キャラ | 衣装の色味 | 背景アクセント |
-| --- | --- | --- |
-| アカネ | 赤・オレンジ系（炎） | ピンク寄りのグロー `#5a2142` |
-| カエデ | 淡い緑・白系（草） | 暖色（アンバー）のグロー `#5c3520` |
-| コユキ | 青・白系（氷） | 紫寄りのグロー `#452a5c` |
-| サユミ | 茶・緑系（草） | 寒色（ティール）のグロー `#1d4a4a` |
+実装：`GameBackground`に`glowColor`（中央上部のグロー色）と`textColor`（流れる文字の色）の2つを渡す（[components/GameBackground.tsx](../../components/GameBackground.tsx)）。文字色は[public/backgrounds/pattern-hiro-games.svg](../../public/backgrounds/pattern-hiro-games.svg)を`mask-image`として使い、その形（アルファ）だけを借りて任意の`background-color`で塗り直す方式（SVG自体のfill色は使わないので、指定した色がそのまま出る）。キャラクター側の指定は[app/games/game1/(main)/character/page.tsx](<../../app/games/game1/(main)/character/page.tsx>)の`CHARACTER_BG_COLORS`。
+
+キャラクター自身の衣装の色と背景が被って埋もれないよう、あえて補色寄りの色を選んでいる。
+
+| キャラ | 衣装の色味 | 背景グロー | 流れる文字の色 |
+| --- | --- | --- | --- |
+| アカネ | 赤・オレンジ系（炎） | ローズ `#5a2142` | ピンク `#ff9ec9` |
+| カエデ | 淡い緑・白系（草） | 暖色（アンバー） `#5c3520` | 明るいアンバー `#ffcf8a` |
+| コユキ | 青・白系（氷） | 紫寄り `#452a5c` | 明るい紫（マゼンタ寄り） `#d9a8ff` |
+| サユミ | 茶・緑系（草） | 寒色（ティール） `#1d4a4a` | 明るいティール `#8ce9e0` |
+
+キャラクター切り替え時は`transition`でふわっと色が変わる（グロー・文字色とも0.5秒）。
 
 「hiro games」の流れる文字パターン自体は共通のまま、ベースのラジアルグラデーション色だけがキャラクター切り替え時にふわっと（`transition-[background]`）切り替わる。
 
