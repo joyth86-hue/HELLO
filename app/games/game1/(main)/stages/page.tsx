@@ -25,7 +25,7 @@ export default function StageSelectPage() {
       <GameBackground />
 
       <div className="relative z-10 flex h-full flex-col">
-        <div className="px-4 pb-2 pt-4">
+        <div className="px-4 pb-2 pt-[calc(1rem_+_env(safe-area-inset-top))]">
           <h1 className="text-lg font-bold tracking-wide text-[#f4f1ff]">ステージ選択</h1>
         </div>
 

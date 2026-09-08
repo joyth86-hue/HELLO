@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,22 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "hiro games",
   description: "hiro games",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+  },
+};
+
+// viewportFit: "cover" で、ノッチ・ステータスバー分の領域までページの背景を
+// 描画対象に含める（iPhoneでホーム画面に追加した際などに、時計・電波・充電
+// 残量のあるエリアが背景の塗られていない帯になってしまう問題への対応）。
+// themeColorは通常のSafariタブ表示時のブラウザUI（アドレスバー等）の色を
+// アプリの背景色に合わせるためのもの。
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#14132a",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

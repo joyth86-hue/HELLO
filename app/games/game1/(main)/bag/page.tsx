@@ -54,7 +54,7 @@ export default function BagPage() {
       <GameBackground />
 
       <div className="relative z-10 flex h-full flex-col">
-        <div className="px-4 pb-2 pt-4">
+        <div className="px-4 pb-2 pt-[calc(1rem_+_env(safe-area-inset-top))]">
           <h1 className="text-lg font-bold tracking-wide text-[#f4f1ff]">バッグの中身</h1>
           <p className="mt-1 text-[11px] font-medium tracking-wide text-[#b8b3d9]">
             所持アイテム {owned.length} 種類

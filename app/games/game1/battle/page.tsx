@@ -254,12 +254,12 @@ export default function BattleTestPage() {
         className="absolute inset-0 h-full w-full object-cover"
       />
 
-      <div className="absolute left-4 top-4 z-20 rounded-full bg-black/60 px-3 py-1 text-[11px] font-bold text-white">
+      <div className="absolute left-4 top-[calc(1rem_+_env(safe-area-inset-top))] z-20 rounded-full bg-black/60 px-3 py-1 text-[11px] font-bold text-white">
         ステージ {stageLabel}
       </div>
 
       {turnMessage && !result && (
-        <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-xs font-bold text-white">
+        <div className="absolute left-1/2 top-[calc(1rem_+_env(safe-area-inset-top))] z-20 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-xs font-bold text-white">
           {turnMessage}
         </div>
       )}

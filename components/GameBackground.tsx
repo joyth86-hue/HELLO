@@ -5,14 +5,17 @@
 // 描画順に注意：この要素は各画面のルート要素の「最初の子」として置き、
 // 実際のコンテンツは relative z-10 でくるむこと。子に負のz-indexを付けると
 // 親自身の背景の裏に回り込むことがある（過去に発生した実際の不具合）。
-export default function GameBackground() {
+//
+// accentColor：中央上部のラジアルグラデーションの色だけを差し替えるための
+// オプション（例：キャラクター画面でキャラごとに色味を変える用途）。
+// 省略時は既存のダークパープル。流れる文字パターン自体は常に共通のまま。
+export default function GameBackground({ accentColor = "#2c2557" }: { accentColor?: string }) {
   return (
     <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 transition-[background] duration-500"
         style={{
-          background:
-            "radial-gradient(120% 90% at 50% -10%, #2c2557 0%, transparent 60%), linear-gradient(165deg, #131228 0%, #1c1a3a 55%, #14132a 100%)",
+          background: `radial-gradient(120% 90% at 50% -10%, ${accentColor} 0%, transparent 60%), linear-gradient(165deg, #131228 0%, #1c1a3a 55%, #14132a 100%)`,
         }}
       />
       <div

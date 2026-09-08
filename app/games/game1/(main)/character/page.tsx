@@ -38,6 +38,16 @@ function idleFrameBackgroundPosition(frame: number) {
 
 const EMPTY_EQUIPMENT: CharacterEquipment = { weapon: null, artifacts: [null, null, null] };
 
+// キャラクターごとの背景アクセントカラー（GameBackgroundの中央上部グラデーション色）。
+// 立ち絵自体の色味と被って埋もれないよう、あえて補色寄りの色を選んでいる
+// （アカネ＝赤系なのでピンク、コユキ＝青系なので紫、など）。
+const CHARACTER_BG_ACCENT: Record<string, string> = {
+  c01: "#5a2142", // アカネ（赤系の衣装に対してピンク寄りのグロー）
+  c02: "#5c3520", // カエデ（草・淡い緑系の衣装に対して暖色のグロー）
+  c03: "#452a5c", // コユキ（氷・青系の衣装に対して紫寄りのグロー）
+  c04: "#1d4a4a", // サユミ（草・茶系の衣装に対して寒色のグロー）
+};
+
 // 会心率・会心ダメージの基礎値（docs/spec/adventure-system.mdのダメージ計算式案）。
 // アーティファクトの効果値がまだ無いため、装備による上乗せ分は今は反映していない。
 const BASE_CRIT_RATE = 10;
@@ -271,14 +281,14 @@ export default function CharacterViewPage() {
 
   return (
     <div className="relative h-[100dvh] touch-none overflow-hidden bg-background">
-      <GameBackground />
+      <GameBackground accentColor={CHARACTER_BG_ACCENT[currentId]} />
 
       <div className="relative z-10 flex h-full touch-none flex-col">
-        <div className="relative flex flex-shrink-0 items-center justify-center bg-black px-16 py-3.5">
+        <div className="relative flex flex-shrink-0 items-center justify-center bg-black px-16 pb-3.5 pt-[calc(0.875rem_+_env(safe-area-inset-top))]">
           <p className="text-xl font-bold tracking-wide text-white">{currentBaseInfo?.name ?? ""}</p>
           <button
             onClick={toggleParty}
-            className="absolute right-3 flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-white"
+            className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-white"
           >
             <span
               className={`flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded border-2 ${

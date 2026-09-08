@@ -32,7 +32,7 @@ export default function Game1HomePage() {
         className="absolute inset-0 h-full w-full object-cover"
       />
 
-      <div className="absolute right-4 top-4 z-10 w-[240px] rounded-xl border border-[rgba(201,195,255,0.5)] bg-[rgba(20,18,40,0.68)] px-3.5 py-2 text-[11px] font-medium text-[#eee9ff] backdrop-blur-sm">
+      <div className="absolute right-4 top-[calc(1rem_+_env(safe-area-inset-top))] z-10 w-[240px] rounded-xl border border-[rgba(201,195,255,0.5)] bg-[rgba(20,18,40,0.68)] px-3.5 py-2 text-[11px] font-medium text-[#eee9ff] backdrop-blur-sm">
         <p className="flex justify-between gap-2">
           <span>所持金：</span>
           <span className="tabular-nums">{formatCurrency(currency)}</span>
