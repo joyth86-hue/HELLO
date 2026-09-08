@@ -21,7 +21,7 @@ export default function StageSelectPage() {
   const stages = Array.from({ length: selectableUpTo }, (_, i) => i + 1);
 
   return (
-    <div className="relative h-screen overflow-hidden bg-background">
+    <div className="relative h-[100dvh] overflow-hidden bg-background">
       <GameBackground />
 
       <div className="relative z-10 flex h-full flex-col">

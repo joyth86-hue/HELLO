@@ -17,7 +17,7 @@ export default function AppStartPage() {
   }, [router]);
 
   return (
-    <div className="flex h-screen w-full touch-none items-center justify-center overflow-hidden bg-black">
+    <div className="flex h-[100dvh] w-full touch-none items-center justify-center overflow-hidden bg-black">
       <img
         src="/logos/l01.png"
         alt="hiro games"

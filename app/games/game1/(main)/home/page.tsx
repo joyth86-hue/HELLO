@@ -24,7 +24,7 @@ export default function Game1HomePage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
+    <div className="relative h-[100dvh] overflow-hidden bg-background">
       <img
         src={HOME_BACKGROUND}
         alt=""
@@ -43,7 +43,7 @@ export default function Game1HomePage() {
         </p>
       </div>
 
-      <div className="relative z-10 flex min-h-screen flex-col items-center gap-8 p-6 pb-28 pt-20 text-center">
+      <div className="relative z-10 flex h-full flex-col items-center gap-8 p-6 pb-28 pt-20 text-center">
         <Link
           href="/games/game1/stages"
           className={`${stickerButton} mt-auto rounded-full px-8 py-3`}

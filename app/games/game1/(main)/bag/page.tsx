@@ -50,7 +50,7 @@ export default function BagPage() {
   const selected = owned.find((entry) => entry.item.id === selectedId) ?? null;
 
   return (
-    <div className="relative h-screen overflow-hidden bg-background">
+    <div className="relative h-[100dvh] overflow-hidden bg-background">
       <GameBackground />
 
       <div className="relative z-10 flex h-full flex-col">

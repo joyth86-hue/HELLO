@@ -246,7 +246,7 @@ export default function BattleTestPage() {
   }
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-black">
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-black">
       <img
         src={BACKGROUND}
         alt=""
