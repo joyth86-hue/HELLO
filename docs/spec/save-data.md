@@ -43,13 +43,22 @@ interface InventoryEntry {
   quantity: number;
 }
 
+// キャラクター1体分の装備。武器スロット1つ＋アーティファクトスロット3つ固定。
+interface CharacterEquipment {
+  weapon: string | null; // lib/items-info.tsのID
+  artifacts: [string | null, string | null, string | null];
+}
+
 interface Game1SaveData {
   playCount: number; // Game1画面を開いた回数
   inventory: InventoryEntry[]; // 所持アイテム（バッグの中身画面で使用）
+  equipment: Record<string, CharacterEquipment>; // キャラID → 装備（キャラクター確認画面で使用）
 }
 ```
 
 `inventory`は現状、アイテムを入手する仕組み（敵を倒す・報酬をもらうなど）が無いため、[バッグの中身画面](./screens/bag.md)の表示確認用にテストデータ（10種類）を初期値として持たせている。入手システムが決まったら、この初期値は撤去する想定。
+
+`equipment`はキーにキャラクターIDが無い（＝一度も装備操作をしていない）場合、装備なし（`{ weapon: null, artifacts: [null, null, null] }`）として扱う（`getCharacterEquipment()`ヘルパー）。詳細は[character-view.md](./screens/character-view.md)参照。
 
 ## 命名の補足
 

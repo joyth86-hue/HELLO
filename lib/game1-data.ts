@@ -8,12 +8,32 @@ export interface InventoryEntry {
   quantity: number;
 }
 
+// キャラクター1体分の装備。武器スロット1つ＋アーティファクトスロット3つ固定。
+export interface CharacterEquipment {
+  weapon: string | null;
+  artifacts: [string | null, string | null, string | null];
+}
+
+// キャラクターID → 装備。まだ何も装備していないキャラクターはキー自体が無い
+// （getCharacterEquipmentで空の装備として扱う）。
+export type EquipmentState = Record<string, CharacterEquipment>;
+
 export interface Game1SaveData {
   playCount: number;
   inventory: InventoryEntry[];
+  equipment: EquipmentState;
 }
 
 export const GAME1_ID = "game1";
+
+const EMPTY_EQUIPMENT: CharacterEquipment = { weapon: null, artifacts: [null, null, null] };
+
+export function getCharacterEquipment(
+  data: Game1SaveData,
+  characterId: string
+): CharacterEquipment {
+  return data.equipment[characterId] ?? EMPTY_EQUIPMENT;
+}
 
 // 敵を倒す・報酬をもらうといった「アイテムを入手する仕組み」がまだ無いため、
 // バッグ画面の表示を作って確認するための仮の初期所持アイテム。
@@ -32,6 +52,7 @@ export const defaultGame1Data: Game1SaveData = {
     { itemId: "i101", quantity: 1 },
     { itemId: "i226", quantity: 1 },
   ],
+  equipment: {},
 };
 
 export function loadGame1Data(): Game1SaveData {
