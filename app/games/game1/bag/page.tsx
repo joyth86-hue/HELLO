@@ -5,6 +5,7 @@ import Link from "next/link";
 import { loadGame1Data } from "@/lib/game1-data";
 import { getItemBaseInfo, type ItemBaseInfo, type ItemType } from "@/lib/items-info";
 import { stickerButton } from "@/lib/ui";
+import GameBackground from "@/components/GameBackground";
 
 interface OwnedItem {
   item: ItemBaseInfo;
@@ -51,7 +52,10 @@ export default function BagPage() {
   const selected = owned.find((entry) => entry.item.id === selectedId) ?? null;
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-background">
+    <div className="relative h-screen overflow-hidden bg-background">
+      <GameBackground />
+
+      <div className="relative z-10 flex h-full flex-col">
       <Link
         href="/games/game1/home"
         aria-label="Game1のメイン画面に戻る"
@@ -64,8 +68,8 @@ export default function BagPage() {
       </Link>
 
       <div className="px-4 pb-2 pr-20 pt-4">
-        <h1 className="text-lg font-bold tracking-wide text-black">バッグの中身</h1>
-        <p className="mt-1 text-[11px] font-medium tracking-wide text-zinc-500">
+        <h1 className="text-lg font-bold tracking-wide text-[#f4f1ff]">バッグの中身</h1>
+        <p className="mt-1 text-[11px] font-medium tracking-wide text-[#b8b3d9]">
           所持アイテム {owned.length} 種類
         </p>
       </div>
@@ -75,8 +79,10 @@ export default function BagPage() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-shrink-0 whitespace-nowrap rounded-full border-2 border-black px-3 py-1.5 text-xs font-bold transition-colors ${
-              activeTab === tab ? "bg-black text-white" : "bg-white text-black"
+            className={`flex-shrink-0 whitespace-nowrap rounded-full border-2 px-3 py-1.5 text-xs font-bold transition-colors ${
+              activeTab === tab
+                ? "border-black bg-white text-black"
+                : "border-[rgba(201,195,255,0.5)] bg-[rgba(255,255,255,0.06)] text-[#eee9ff]"
             }`}
           >
             {tab}（{counts[tab] ?? 0}）
@@ -91,10 +97,10 @@ export default function BagPage() {
               key={item.id}
               onClick={() => setSelectedId(item.id)}
               aria-pressed={selectedId === item.id}
-              className={`relative rounded-xl border-2 bg-white p-1.5 transition-all ${
+              className={`relative rounded-xl border-2 bg-[rgba(255,255,255,0.06)] p-1.5 transition-all ${
                 selectedId === item.id
-                  ? "border-black shadow-[3px_3px_0_0_#171717]"
-                  : "border-zinc-300"
+                  ? "border-black shadow-[3px_3px_0_0_#4a3f86]"
+                  : "border-[rgba(201,195,255,0.35)]"
               }`}
             >
               <img
@@ -112,7 +118,7 @@ export default function BagPage() {
           ))}
         </div>
         {filtered.length === 0 && (
-          <p className="pt-10 text-center text-sm text-zinc-500">
+          <p className="pt-10 text-center text-sm text-[#b8b3d9]">
             このカテゴリのアイテムは持っていません
           </p>
         )}
@@ -152,6 +158,7 @@ export default function BagPage() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

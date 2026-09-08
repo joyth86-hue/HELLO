@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #e4f4ec;
-  --foreground: #171717;
+  --background: #14132a;
+  --foreground: #f4f1ff;
 }
 
 @theme inline {
@@ -73,5 +73,24 @@ body {
   }
   .animate-fill-bar {
     animation-duration: 0.01ms;
+  }
+}
+
+@keyframes bg-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -210px -85px;
+  }
+}
+
+.animate-bg-drift {
+  animation: bg-drift 7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-bg-drift {
+    animation: none;
   }
 }
