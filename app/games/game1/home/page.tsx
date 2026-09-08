@@ -5,7 +5,10 @@ import Link from "next/link";
 import { formatCurrency, loadGlobalData } from "@/lib/storage";
 import { loadGame1Data, saveGame1Data } from "@/lib/game1-data";
 import { stickerButton } from "@/lib/ui";
-import GameBackground from "@/components/GameBackground";
+
+// 仲間が増えるたびに背景も賑やかになる想定（home_01=1人〜home_04=4人）。
+// パーティ編成の仕組みがまだ無いため、現状はテストとしてhome_04で固定。
+const HOME_BACKGROUND = "/backgrounds/home/home_04_akane_koyuki_kaede_sayumi.png";
 
 export default function Game1HomePage() {
   const [currency, setCurrency] = useState(0);
@@ -22,12 +25,19 @@ export default function Game1HomePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
-      <GameBackground />
+      <img
+        src={HOME_BACKGROUND}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
 
       <div className="relative z-10 flex min-h-screen flex-col items-center gap-8 p-6 pt-20 text-center">
-        <h1 className="text-2xl font-bold tracking-wide text-[#f4f1ff]">Game 1</h1>
+        <h1 className="text-2xl font-bold tracking-wide text-[#f4f1ff] [text-shadow:0_2px_8px_rgba(0,0,0,0.6)]">
+          Game 1
+        </h1>
 
-        <div className="w-full max-w-sm rounded-2xl border-2 border-[rgba(201,195,255,0.55)] bg-[rgba(255,255,255,0.09)] p-6 text-left text-[#eee9ff] backdrop-blur-sm">
+        <div className="w-full max-w-sm rounded-2xl border-2 border-[rgba(201,195,255,0.55)] bg-[rgba(20,18,40,0.68)] p-6 text-left text-[#eee9ff] backdrop-blur-sm">
           <p>共通通貨（全ゲーム共有）: {formatCurrency(currency)}</p>
           <p>このゲームのプレイ回数: {playCount}</p>
         </div>
