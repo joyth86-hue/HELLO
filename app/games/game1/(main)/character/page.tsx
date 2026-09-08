@@ -39,17 +39,38 @@ function idleFrameBackgroundPosition(frame: number) {
 
 const EMPTY_EQUIPMENT: CharacterEquipment = { weapon: null, artifacts: [null, null, null] };
 
-// キャラクターごとの背景色（GameBackgroundのglowColor＝中央上部のグロー、
-// textColor＝「hiro games」が流れる文字の色）。ベースのグラデーションだけ
-// でなく、流れる文字自体もキャラごとの色で塗り直すことで、画面全体が
-// はっきり別の色に見えるようにしている。立ち絵自体の色味と被って埋もれ
-// ないよう、あえて補色寄りの色を選んでいる
+// キャラクターごとの背景色。GameBackgroundのbaseGradient（背景のベース
+// そのもの、今までの濃紺〜紫グラデーションに相当する部分）をキャラごとに
+// 丸ごと差し替え、glow（中央上部のうっすらした光）とtext（「hiro games」
+// が流れる文字）も同じ色味で揃えることで、画面全体がはっきり別の色に見え
+// るようにしている。単なる光の演出ではなく、背景色そのものの変更が目的。
+// 立ち絵自体の色味と被って埋もれないよう、あえて補色寄りの色を選んでいる
 // （アカネ＝赤系なのでピンク、コユキ＝青系なので紫、など）。
-const CHARACTER_BG_COLORS: Record<string, { glow: string; text: string }> = {
-  c01: { glow: "#5a2142", text: "#ff9ec9" }, // アカネ：ローズ・ピンク
-  c02: { glow: "#5c3520", text: "#ffcf8a" }, // カエデ：暖色・アンバー
-  c03: { glow: "#452a5c", text: "#d9a8ff" }, // コユキ：マゼンタ・紫
-  c04: { glow: "#1d4a4a", text: "#8ce9e0" }, // サユミ：寒色・ティール
+const CHARACTER_BG_COLORS: Record<string, { base: string; glow: string; text: string }> = {
+  c01: {
+    // アカネ：ローズ・ワイン
+    base: "linear-gradient(165deg, #3d1526 0%, #4a1c30 55%, #2a0f1c 100%)",
+    glow: "#7a2f52",
+    text: "#ff9ec9",
+  },
+  c02: {
+    // カエデ：暖色・アンバー
+    base: "linear-gradient(165deg, #3a2712 0%, #4a3018 55%, #26190c 100%)",
+    glow: "#7a5220",
+    text: "#ffcf8a",
+  },
+  c03: {
+    // コユキ：マゼンタ・紫
+    base: "linear-gradient(165deg, #2f1238 0%, #3d1a48 55%, #200c28 100%)",
+    glow: "#6a2f82",
+    text: "#d9a8ff",
+  },
+  c04: {
+    // サユミ：寒色・ティール
+    base: "linear-gradient(165deg, #0f2b28 0%, #163a35 55%, #091c1a 100%)",
+    glow: "#1f6a5e",
+    text: "#8ce9e0",
+  },
 };
 
 // 仲間の解放状況にかかわらず、テスト用に4人全員を表示するための一時フラグ。
@@ -294,6 +315,7 @@ export default function CharacterViewPage() {
   return (
     <div className="relative h-[100dvh] touch-none overflow-hidden bg-background">
       <GameBackground
+        baseGradient={CHARACTER_BG_COLORS[currentId]?.base}
         glowColor={CHARACTER_BG_COLORS[currentId]?.glow}
         textColor={CHARACTER_BG_COLORS[currentId]?.text}
       />

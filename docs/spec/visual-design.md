@@ -32,22 +32,28 @@ OS・ブラウザのダークモード設定に関わらず、常にこの配色
 
 ### キャラクター画面：キャラクターごとに背景全体の色を変える
 
-[キャラクター確認画面](./screens/character-view.md)だけは、表示中のキャラクターごとに背景の色そのものを変えている。「ベースのグラデーション（中央上部のグロー）」と「hiro gamesが流れる文字」の**両方**をキャラクターの色に染めることで、「その色の中をhiro gamesの文字が流れている」という見え方になるようにしている（文字色だけ据え置きで背景がうっすら変わる、という中途半端な見た目にはしない）。
+[キャラクター確認画面](./screens/character-view.md)だけは、表示中のキャラクターごとに**背景のベースカラーそのもの**を丸ごと差し替えている。他の画面共通の濃紺〜紫のグラデーション部分自体をキャラごとの色（例：アカネなら背景全体がワイン・ローズ系）に置き換え、その上を「hiro games」の文字が同系色で流れる、という見え方にしている。中央上部にうっすら光を足すだけの演出（アクセントカラー程度の変更）では「別の色の背景」には見えない、という指摘を受けて、ベースグラデーション自体を差し替える方式に変更した。
 
-実装：`GameBackground`に`glowColor`（中央上部のグロー色）と`textColor`（流れる文字の色）の2つを渡す（[components/GameBackground.tsx](../../components/GameBackground.tsx)）。文字色は[public/backgrounds/pattern-hiro-games.svg](../../public/backgrounds/pattern-hiro-games.svg)を`mask-image`として使い、その形（アルファ）だけを借りて任意の`background-color`で塗り直す方式（SVG自体のfill色は使わないので、指定した色がそのまま出る）。キャラクター側の指定は[app/games/game1/(main)/character/page.tsx](<../../app/games/game1/(main)/character/page.tsx>)の`CHARACTER_BG_COLORS`。
+実装：`GameBackground`に`baseGradient`（ベースのグラデーションCSSをまるごと差し替え）、`glowColor`（中央上部に足すうっすらした光の色）、`textColor`（流れる文字の色）の3つを渡す（[components/GameBackground.tsx](../../components/GameBackground.tsx)）。画像ファイルを複数用意する必要はなく、いずれもCSSの色指定のみで実現している。「hiro games」の文字パターン画像（[public/backgrounds/pattern-hiro-games.svg](../../public/backgrounds/pattern-hiro-games.svg)）自体は共通の1種類のままで、`mask-image`として使い、その形（アルファ）だけを借りて任意の`background-color`で塗り直す方式（SVG自体のfill色は使わないので、指定した色がそのまま出る）。キャラクター側の指定は[app/games/game1/(main)/character/page.tsx](<../../app/games/game1/(main)/character/page.tsx>)の`CHARACTER_BG_COLORS`。
 
 キャラクター自身の衣装の色と背景が被って埋もれないよう、あえて補色寄りの色を選んでいる。
 
-| キャラ | 衣装の色味 | 背景グロー | 流れる文字の色 |
+| キャラ | 衣装の色味 | 背景ベース（例） | 流れる文字の色 |
 | --- | --- | --- | --- |
-| アカネ | 赤・オレンジ系（炎） | ローズ `#5a2142` | ピンク `#ff9ec9` |
-| カエデ | 淡い緑・白系（草） | 暖色（アンバー） `#5c3520` | 明るいアンバー `#ffcf8a` |
-| コユキ | 青・白系（氷） | 紫寄り `#452a5c` | 明るい紫（マゼンタ寄り） `#d9a8ff` |
-| サユミ | 茶・緑系（草） | 寒色（ティール） `#1d4a4a` | 明るいティール `#8ce9e0` |
+| アカネ | 赤・オレンジ系（炎） | ワイン・ローズ系のダークグラデーション | ピンク `#ff9ec9` |
+| カエデ | 淡い緑・白系（草） | 暖色（アンバー・ブラウン）系のダークグラデーション | 明るいアンバー `#ffcf8a` |
+| コユキ | 青・白系（氷） | マゼンタ・紫系のダークグラデーション | 明るい紫（マゼンタ寄り） `#d9a8ff` |
+| サユミ | 茶・緑系（草） | 寒色（ティール）系のダークグラデーション | 明るいティール `#8ce9e0` |
 
-キャラクター切り替え時は`transition`でふわっと色が変わる（グロー・文字色とも0.5秒）。
+各グラデーションの正確な色コードは`CHARACTER_BG_COLORS`（実装ファイル）を正とする。全体の明るさ・彩度は元の濃紺グラデーションと揃え、「ダークで少し遊び心のあるトーン」という[全体の配色方針](#配色ボタン方向)から外れすぎないようにしている。
 
-「hiro games」の流れる文字パターン自体は共通のまま、ベースのラジアルグラデーション色だけがキャラクター切り替え時にふわっと（`transition-[background]`）切り替わる。
+キャラクター切り替え時は`transition`でふわっと色が変わる（ベース・グロー・文字色とも0.5秒）。「hiro games」の文字パターン画像自体は共通の1種類のまま、その上に乗る色（`baseGradient`/`glowColor`/`textColor`）だけがキャラクターごとに切り替わる。
+
+## アプリアイコン（ホーム画面に追加した際のアイコン）
+
+iPhone・Androidで「ホーム画面に追加」した際に表示されるアイコン、およびブラウザタブのファビコンには、[app/icon.png](../../app/icon.png)（512×512）と[app/apple-icon.png](../../app/apple-icon.png)（180×180、Appleのapple-touch-icon推奨サイズ）を使っている。どちらもNext.jsの[ファイル規約](https://nextjs.org/docs/app/api-reference/file-conventions/metadata/app-icons)（`app/`直下に`icon.png`・`apple-icon.png`を置くと自動で`<head>`にタグが追加される）に沿って配置しているだけで、コード側の設定は不要。
+
+元データは`サンプル画像/app_icon.png`（1024×1024、アカネの顔アップイラスト）。`sharp`でそれぞれのサイズにリサイズして`app/`直下にコピーしている。差し替える場合は同様に`サンプル画像/`に新しい元画像を置いてもらい、リサイズして`app/icon.png`・`app/apple-icon.png`を上書きする。
 
 ## セーフエリア（ノッチ・ステータスバー）対応
 

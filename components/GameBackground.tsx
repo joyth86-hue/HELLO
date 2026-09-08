@@ -6,15 +6,19 @@
 // 実際のコンテンツは relative z-10 でくるむこと。子に負のz-indexを付けると
 // 親自身の背景の裏に回り込むことがある（過去に発生した実際の不具合）。
 //
-// glowColor / textColor：ベースのグラデーションの色と「hiro games」の流れる
-// 文字の色を、それぞれ直接指定できるオプション（例：キャラクター画面でキャ
-// ラごとに背景全体を別の色に見せる用途）。文字色はSVGパターンをmask-image
-// として使い、その形（アルファ）だけを流用して任意の色で塗り直している
-// （SVG自体のfill色には依存しないので、狙った色をそのまま出せる）。
+// baseGradient：背景のベースになるグラデーションそのもの（今の濃紺〜紫）を
+// 丸ごと差し替えるためのオプション。glowColorは中央上部にうっすら足す光の
+// 色（アクセント程度）、textColorは「hiro games」が流れる文字の色。
+// いずれもキャラクター画面でキャラごとに背景全体の色を変える用途。
+// 文字色はSVGパターンをmask-imageとして使い、その形（アルファ）だけを
+// 流用して任意の色で塗り直している（SVG自体のfill色には依存しないので、
+// 狙った色をそのまま出せる）。
 export default function GameBackground({
+  baseGradient = "linear-gradient(165deg, #131228 0%, #1c1a3a 55%, #14132a 100%)",
   glowColor = "#2c2557",
   textColor = "#c9c3ff",
 }: {
+  baseGradient?: string;
   glowColor?: string;
   textColor?: string;
 }) {
@@ -23,7 +27,7 @@ export default function GameBackground({
       <div
         className="absolute inset-0 transition-[background] duration-500"
         style={{
-          background: `radial-gradient(120% 90% at 50% -10%, ${glowColor} 0%, transparent 60%), linear-gradient(165deg, #131228 0%, #1c1a3a 55%, #14132a 100%)`,
+          background: `radial-gradient(120% 90% at 50% -10%, ${glowColor} 0%, transparent 60%), ${baseGradient}`,
         }}
       />
       <div
