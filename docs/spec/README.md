@@ -20,6 +20,7 @@ CLAUDE.md本体には仕様を書かず、常にこの分冊側を更新する�
 | [battle-stages.md](./battle-stages.md) | 戦闘ステージ（背景・敵の並び）の管理方法 |
 | [screens/battle.md](./screens/battle.md) | 戦闘画面のレイアウト仕様（設計中） |
 | [fields.md](./fields.md) | 戦闘背景（フィールド）素材の管理方法 |
+| [items.md](./items.md) | アイテム（武器・アーティファクト）素材と基本情報の管理方法 |
 | [visual-design.md](./visual-design.md) | 配色などビジュアルデザインの方針 |
 
 ## 今後ファイルが増える場合の目安
