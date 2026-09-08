@@ -8,26 +8,31 @@
 | --- | --- | --- |
 | `/` | アプリ起動画面 | 黒背景→「hiro games」フェードイン→自動でGame1開始画面へ |
 | `/games/game1` | Game 1 開始画面 | 背景＋タイトルのフェード演出のあと「タップして開始する」でホームへ |
-| `/games/game1/home` | Game 1 ホーム画面 | 「冒険する」「キャラクター」「バッグの中身」「ゲームを終了」の4ボタン |
-| `/games/game1/character` | キャラクター確認画面 | [screens/character-view.md](./screens/character-view.md)参照 |
+| `/games/game1/home` | Game 1 ホーム画面（冒険タブ） | [screens/game1-home.md](./screens/game1-home.md)参照 |
+| `/games/game1/map` | マップ画面 | 未実装（プレースホルダーのみ） |
+| `/games/game1/shop` | ショップ画面 | 未実装（プレースホルダーのみ） |
+| `/games/game1/character` | キャラクター確認画面（仲間タブ） | [screens/character-view.md](./screens/character-view.md)参照 |
 | `/games/game1/bag` | バッグの中身画面 | [screens/bag.md](./screens/bag.md)参照 |
+
+上記5画面（ホーム/マップ/ショップ/キャラクター/バッグ）は、画面下部の[下部ナビゲーションバー](./screens/bottom-nav.md)（マップ/ショップ/冒険/仲間/バッグの5タブ）で直接切り替える構成になっている（以前の「ホーム画面から個別画面へ行って✕で戻る」構成から変更した）。
 
 ## 遷移フロー
 
 ```
 / (アプリ起動画面：黒背景→「hiro games」フェードイン、自動遷移)
   └─ 約2.5秒後、自動的に → /games/game1 (Game1開始画面：背景/タイトルのフェード演出)
-                                └─ 演出後、画面タップ → 暗転＋Now Loading演出（約1.8秒）→ /games/game1/home (ホーム画面)
-                                                            ├─ 「冒険する」（未実装）
-                                                            ├─ 「キャラクター」→ /games/game1/character
-                                                            │                       └─ ✕ボタン → /games/game1/home に戻る
-                                                            ├─ 「バッグの中身」→ /games/game1/bag
-                                                            │                       └─ ✕ボタン → /games/game1/home に戻る
-                                                            └─ 「ゲームを終了」→ / (アプリ起動画面に戻る)
+                                └─ 演出後、画面タップ → 暗転＋Now Loading演出（約1.8秒）→ /games/game1/home (ホーム画面＝冒険タブ)
+                                                            └─ 下部ナビゲーションバー（常時表示）で以下を直接切り替え
+                                                                ├─ マップ → /games/game1/map（未実装）
+                                                                ├─ ショップ → /games/game1/shop（未実装）
+                                                                ├─ 冒険 → /games/game1/home
+                                                                ├─ 仲間 → /games/game1/character
+                                                                └─ バッグ → /games/game1/bag
 ```
 
 ## 現状の制約・未実装事項
 
 - URLを直接叩けば `/games/game1/home` に、起動画面・開始画面を経由せずアクセスできる（ルートガードは未実装）。
-- Game 1ホーム画面の「冒険する」ボタンは見た目のみで、押しても何も起きない。
+- マップ・ショップ画面は未実装（タブとしては切り替わるが、中身は「準備中です」のプレースホルダーのみ）。
+- 下部ナビゲーションバーへの移行にあたって、以前ホーム画面にあった「ゲームを終了」（`/`に戻る）ボタンは一旦なくなった。必要であれば別途検討する。
 - 現状はGame 1のみ。別のゲームを追加する場合は、そのゲーム専用の起動画面・開始画面をこのアプリとは別に用意する想定（詳細は未定）。

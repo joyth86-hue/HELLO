@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { loadGame1Data } from "@/lib/game1-data";
 import { getItemBaseInfo, type ItemBaseInfo, type ItemType } from "@/lib/items-info";
-import { stickerButton } from "@/lib/ui";
 import GameBackground from "@/components/GameBackground";
 
 interface OwnedItem {
@@ -56,82 +54,75 @@ export default function BagPage() {
       <GameBackground />
 
       <div className="relative z-10 flex h-full flex-col">
-      <Link
-        href="/games/game1/home"
-        aria-label="Game1のメイン画面に戻る"
-        className={`${stickerButton} absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full`}
-      >
-        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-          <line x1="2" y1="2" x2="16" y2="16" stroke="#171717" strokeWidth="2.5" strokeLinecap="round" />
-          <line x1="16" y1="2" x2="2" y2="16" stroke="#171717" strokeWidth="2.5" strokeLinecap="round" />
-        </svg>
-      </Link>
+        <div className="px-4 pb-2 pt-4">
+          <h1 className="text-lg font-bold tracking-wide text-[#f4f1ff]">バッグの中身</h1>
+          <p className="mt-1 text-[11px] font-medium tracking-wide text-[#b8b3d9]">
+            所持アイテム {owned.length} 種類
+          </p>
+        </div>
 
-      <div className="px-4 pb-2 pr-20 pt-4">
-        <h1 className="text-lg font-bold tracking-wide text-[#f4f1ff]">バッグの中身</h1>
-        <p className="mt-1 text-[11px] font-medium tracking-wide text-[#b8b3d9]">
-          所持アイテム {owned.length} 種類
-        </p>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto px-4 pb-3">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-shrink-0 whitespace-nowrap rounded-full border-2 px-3 py-1.5 text-xs font-bold transition-colors ${
-              activeTab === tab
-                ? "border-black bg-white text-black"
-                : "border-[rgba(201,195,255,0.5)] bg-[rgba(255,255,255,0.06)] text-[#eee9ff]"
-            }`}
-          >
-            {tab}（{counts[tab] ?? 0}）
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 pb-6">
-        <div className="grid grid-cols-4 gap-3">
-          {filtered.map(({ item, quantity }) => (
+        <div className="flex gap-2 overflow-x-auto px-4 pb-3">
+          {TABS.map((tab) => (
             <button
-              key={item.id}
-              onClick={() => setSelectedId(item.id)}
-              aria-pressed={selectedId === item.id}
-              className={`relative rounded-xl border-2 bg-[rgba(255,255,255,0.06)] p-1.5 transition-all ${
-                selectedId === item.id
-                  ? "border-black shadow-[3px_3px_0_0_#4a3f86]"
-                  : "border-[rgba(201,195,255,0.35)]"
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-shrink-0 whitespace-nowrap rounded-full border-2 px-3 py-1.5 text-xs font-bold transition-colors ${
+                activeTab === tab
+                  ? "border-black bg-white text-black"
+                  : "border-[rgba(201,195,255,0.5)] bg-[rgba(255,255,255,0.06)] text-[#eee9ff]"
               }`}
             >
-              <img
-                src={item.asset}
-                alt={item.name}
-                className="aspect-square w-full rounded-lg object-cover"
-                draggable={false}
-              />
-              {quantity > 1 && (
-                <span className="absolute bottom-1 right-1 rounded-full bg-black px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  ×{quantity}
-                </span>
-              )}
+              {tab}（{counts[tab] ?? 0}）
             </button>
           ))}
         </div>
-        {filtered.length === 0 && (
-          <p className="pt-10 text-center text-sm text-[#b8b3d9]">
-            このカテゴリのアイテムは持っていません
-          </p>
-        )}
+
+        <div className="flex-1 overflow-y-auto px-4 pb-28">
+          <div className="grid grid-cols-4 gap-3">
+            {filtered.map(({ item, quantity }) => (
+              <button
+                key={item.id}
+                onClick={() => setSelectedId(item.id)}
+                aria-pressed={selectedId === item.id}
+                className={`relative rounded-xl border-2 bg-[rgba(255,255,255,0.06)] p-1.5 transition-all ${
+                  selectedId === item.id
+                    ? "border-black shadow-[3px_3px_0_0_#4a3f86]"
+                    : "border-[rgba(201,195,255,0.35)]"
+                }`}
+              >
+                <img
+                  src={item.asset}
+                  alt={item.name}
+                  className="aspect-square w-full rounded-lg object-cover"
+                  draggable={false}
+                />
+                {quantity > 1 && (
+                  <span className="absolute bottom-1 right-1 rounded-full bg-black px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    ×{quantity}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          {filtered.length === 0 && (
+            <p className="pt-10 text-center text-sm text-[#b8b3d9]">
+              このカテゴリのアイテムは持っていません
+            </p>
+          )}
+        </div>
       </div>
 
       {selected && (
         <>
+          {/* 詳細シートはz-10でスタッキングコンテキストを作っている上のdivの外に置く。
+              中に置くと、そのdivのz-10に上限が引きずられて、下部ナビバー(z-50)の
+              裏に隠れてしまう（スタッキングコンテキストの外にz-indexは効かない）。 */}
           <div
-            className="fixed inset-0 z-20 bg-black/45"
+            className="fixed inset-0 z-[60] bg-black/45"
             onClick={() => setSelectedId(null)}
             aria-hidden="true"
           />
-          <div className="fixed inset-x-0 bottom-0 z-30 rounded-t-2xl border-t-2 border-black bg-[#fffaf0] p-4 pb-6">
+          <div className="fixed inset-x-0 bottom-0 z-[61] rounded-t-2xl border-t-2 border-black bg-[#fffaf0] p-4 pb-6">
             <div className="flex items-start gap-3">
               <img
                 src={selected.item.asset}
@@ -158,7 +149,6 @@ export default function BagPage() {
           </div>
         </>
       )}
-      </div>
     </div>
   );
 }

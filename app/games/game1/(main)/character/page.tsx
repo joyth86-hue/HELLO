@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { stickerButton } from "@/lib/ui";
 import { CHARACTERS, getCharacterByIndex } from "@/lib/characters";
 import GameBackground from "@/components/GameBackground";
@@ -81,18 +80,7 @@ export default function CharacterViewPage() {
       <GameBackground />
 
       <div className="relative z-10 flex h-full touch-none flex-col">
-        <Link
-          href="/games/game1/home"
-          aria-label="Game1のメイン画面に戻る"
-          className={`${stickerButton} absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full`}
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-            <line x1="2" y1="2" x2="16" y2="16" stroke="#171717" strokeWidth="2.5" strokeLinecap="round" />
-            <line x1="16" y1="2" x2="2" y2="16" stroke="#171717" strokeWidth="2.5" strokeLinecap="round" />
-          </svg>
-        </Link>
-
-        <div className="px-4 pr-20 pt-4">
+        <div className="px-4 pt-4">
           <p className="mb-1.5 text-[11px] font-medium tracking-wide text-[#b8b3d9]">STATUS</p>
           <div className="rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2.5 text-sm text-[#eee9ff] backdrop-blur-sm">
             <div className="flex justify-between">
@@ -134,7 +122,7 @@ export default function CharacterViewPage() {
           </div>
         </div>
 
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-28">
           <p className="mb-1.5 text-[11px] font-medium tracking-wide text-[#b8b3d9]">育成メニュー</p>
           <div className="flex gap-3">
             <button className={`${stickerButton} flex-1 rounded-full py-2.5`}>装備</button>
