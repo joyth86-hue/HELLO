@@ -2,20 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  formatCurrency,
-  loadGameData,
-  loadGlobalData,
-  saveGameData,
-} from "@/lib/storage";
+import { formatCurrency, loadGlobalData } from "@/lib/storage";
+import { loadGame1Data, saveGame1Data } from "@/lib/game1-data";
 import { stickerButton } from "@/lib/ui";
-
-interface Game1SaveData {
-  playCount: number;
-}
-
-const GAME_ID = "game1";
-const defaultGame1Data: Game1SaveData = { playCount: 0 };
 
 export default function Game1HomePage() {
   const [currency, setCurrency] = useState(0);
@@ -24,9 +13,9 @@ export default function Game1HomePage() {
   useEffect(() => {
     setCurrency(loadGlobalData().currency);
 
-    const data = loadGameData(GAME_ID, defaultGame1Data);
+    const data = loadGame1Data();
     const next = { ...data, playCount: data.playCount + 1 };
-    saveGameData(GAME_ID, next);
+    saveGame1Data(next);
     setPlayCount(next.playCount);
   }, []);
 
@@ -45,7 +34,9 @@ export default function Game1HomePage() {
         キャラクター
       </Link>
 
-      <button className={`${stickerButton} rounded-full px-8 py-3`}>バッグの中身</button>
+      <Link href="/games/game1/bag" className={`${stickerButton} rounded-full px-8 py-3`}>
+        バッグの中身
+      </Link>
 
       <Link href="/" className={`${stickerButton} rounded-full px-8 py-3`}>
         ゲームを終了

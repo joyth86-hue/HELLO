@@ -35,13 +35,21 @@ interface GlobalSaveData {
 
 各ゲームは `loadGameData<T>(gameId, defaultValue)` / `saveGameData<T>(gameId, data)` を使って、そのゲーム専用のデータを自由な形（型`T`）で保存できる。他のゲームからは参照できない想定。
 
-現状、`game1` には以下のデータのみ存在する。
+`game1`のデータは[lib/game1-data.ts](../../lib/game1-data.ts)にまとめている。
 
 ```ts
+interface InventoryEntry {
+  itemId: string; // lib/items-info.tsのID（例: "i001"）
+  quantity: number;
+}
+
 interface Game1SaveData {
   playCount: number; // Game1画面を開いた回数
+  inventory: InventoryEntry[]; // 所持アイテム（バッグの中身画面で使用）
 }
 ```
+
+`inventory`は現状、アイテムを入手する仕組み（敵を倒す・報酬をもらうなど）が無いため、[バッグの中身画面](./screens/bag.md)の表示確認用にテストデータ（10種類）を初期値として持たせている。入手システムが決まったら、この初期値は撤去する想定。
 
 ## 命名の補足
 

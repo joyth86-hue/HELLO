@@ -13,6 +13,7 @@ CLAUDE.md本体には仕様を書かず、常にこの分冊側を更新する�
 | [screens/game1.md](./screens/game1.md) | Game 1 開始画面（背景/タイトルのフェード演出）の仕様 |
 | [screens/game1-home.md](./screens/game1-home.md) | Game 1 ホーム画面（冒険する/キャラクター/バッグの中身/ゲームを終了）の仕様 |
 | [screens/character-view.md](./screens/character-view.md) | キャラクター確認画面の仕様 |
+| [screens/bag.md](./screens/bag.md) | バッグの中身画面（所持アイテム一覧）の仕様 |
 | [save-data.md](./save-data.md) | セーブデータ（共有データ／ゲームごとのデータ）の仕様 |
 | [characters.md](./characters.md) | 仲間キャラクター素材（画像）の管理方法 |
 | [enemies.md](./enemies.md) | 敵キャラクター素材（画像）の管理方法 |
