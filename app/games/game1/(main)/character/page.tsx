@@ -62,10 +62,9 @@ function CharacterPane({ id, frame }: { id: string; frame: number }) {
           className="select-none"
           style={{
             aspectRatio: IDLE_FRAME_ASPECT,
-            // 額縁の縁（マット風のinset box-shadow）にキャラクターの足元などが
-            // 重ならないよう、あえて額縁より一回り小さく表示して余白を持たせる。
-            height: "94%",
-            maxWidth: "94%",
+            // 上下（ヘッダー／装備欄）にぴったりくっつかないよう少し余白を持たせる。
+            height: "96%",
+            maxWidth: "92%",
             backgroundImage: `url(${idleSheet})`,
             backgroundSize: `${IDLE_SHEET_COLUMNS * 100}% ${IDLE_SHEET_ROWS * 100}%`,
             backgroundPosition: idleFrameBackgroundPosition(frame),
@@ -242,8 +241,10 @@ export default function CharacterViewPage() {
     }, SNAP_DURATION);
   };
 
+  const swipeEnabled = unlockedCharacters.length > 1;
+
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (isSettling) return;
+    if (!swipeEnabled || isSettling) return;
     pointerStartX.current = e.clientX;
   };
 
@@ -273,7 +274,65 @@ export default function CharacterViewPage() {
       <GameBackground />
 
       <div className="relative z-10 flex h-full touch-none flex-col">
-        <div className="px-4 pt-4">
+        <div className="relative flex flex-shrink-0 items-center justify-center bg-black px-16 py-3.5">
+          <p className="text-xl font-bold tracking-wide text-white">{currentBaseInfo?.name ?? ""}</p>
+          <button
+            onClick={toggleParty}
+            className="absolute right-3 flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-white"
+          >
+            <span
+              className={`flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded border-2 ${
+                isInParty ? "border-[#c9c3ff] bg-[#c9c3ff]" : "border-white/50 bg-transparent"
+              }`}
+            >
+              {isInParty && (
+                <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true">
+                  <path d="M2 6l3 3 5-6" stroke="#171717" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </span>
+            {partyWarning ? "上限3人" : "参加"}
+          </button>
+        </div>
+
+        <div
+          ref={frameRef}
+          className="relative flex-1 touch-none overflow-hidden"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+        >
+          <div
+            className="flex h-full"
+            style={{
+              width: "300%",
+              transform: `translateX(calc(-33.3333% + ${dragX}px))`,
+              transition: isSettling ? `transform ${SNAP_DURATION}ms ease-out` : "none",
+            }}
+          >
+            <CharacterPane id={prevId} frame={idleFrame} />
+            <CharacterPane id={currentId} frame={idleFrame} />
+            <CharacterPane id={nextId} frame={idleFrame} />
+          </div>
+        </div>
+
+        <div className="px-4 pb-3">
+          <p className="mb-1.5 text-[11px] font-medium tracking-wide text-[#b8b3d9]">装備</p>
+          <div className="grid grid-cols-4 gap-3">
+            <EquipSlot caption="武器" item={weaponItem} onClick={() => setPicker({ kind: "weapon" })} />
+            {([0, 1, 2] as const).map((i) => (
+              <EquipSlot
+                key={i}
+                caption="アーティファクト"
+                item={artifactItems[i]}
+                onClick={() => setPicker({ kind: "artifact", index: i })}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="px-4 pb-28">
           <p className="mb-1.5 text-[11px] font-medium tracking-wide text-[#b8b3d9]">STATUS</p>
           <div className="rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2.5 text-sm text-[#eee9ff] backdrop-blur-sm">
             <div className="mb-2 flex items-baseline justify-between border-b border-[rgba(201,195,255,0.25)] pb-2">
@@ -306,66 +365,6 @@ export default function CharacterViewPage() {
                 <span className="font-bold tabular-nums">{PLACEHOLDER_ELEMENT_RESISTANCE}%</span>
               </div>
             </div>
-          </div>
-
-          <button
-            onClick={toggleParty}
-            className="mt-2 flex w-full items-center gap-2 rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2 text-left text-sm text-[#eee9ff] backdrop-blur-sm"
-          >
-            <span
-              className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border-2 ${
-                isInParty ? "border-[#c9c3ff] bg-[#c9c3ff]" : "border-[rgba(201,195,255,0.5)] bg-transparent"
-              }`}
-            >
-              {isInParty && (
-                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-                  <path d="M2 6l3 3 5-6" stroke="#171717" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </span>
-            バトルに参加
-            {partyWarning && (
-              <span className="ml-auto text-[11px] font-bold text-[#ff9a9a]">最大3人まで</span>
-            )}
-          </button>
-        </div>
-
-        <div className="flex flex-1 items-center justify-center overflow-hidden px-6 py-3">
-          <div
-            ref={frameRef}
-            className="relative aspect-[2/3] h-auto max-h-full w-full max-w-[340px] touch-none overflow-hidden rounded-xl border-4 border-black bg-[#fffaf0] p-1.5 shadow-[inset_0_0_0_4px_#fffaf0,inset_0_0_0_5px_#171717]"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={endDrag}
-            onPointerCancel={endDrag}
-          >
-            <div
-              className="flex h-full"
-              style={{
-                width: "300%",
-                transform: `translateX(calc(-33.3333% + ${dragX}px))`,
-                transition: isSettling ? `transform ${SNAP_DURATION}ms ease-out` : "none",
-              }}
-            >
-              <CharacterPane id={prevId} frame={idleFrame} />
-              <CharacterPane id={currentId} frame={idleFrame} />
-              <CharacterPane id={nextId} frame={idleFrame} />
-            </div>
-          </div>
-        </div>
-
-        <div className="px-4 pb-28">
-          <p className="mb-1.5 text-[11px] font-medium tracking-wide text-[#b8b3d9]">装備</p>
-          <div className="grid grid-cols-4 gap-3">
-            <EquipSlot caption="武器" item={weaponItem} onClick={() => setPicker({ kind: "weapon" })} />
-            {([0, 1, 2] as const).map((i) => (
-              <EquipSlot
-                key={i}
-                caption="アーティファクト"
-                item={artifactItems[i]}
-                onClick={() => setPicker({ kind: "artifact", index: i })}
-              />
-            ))}
           </div>
         </div>
       </div>
