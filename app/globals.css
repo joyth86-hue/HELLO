@@ -12,6 +12,18 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* スマホでスワイプした際に、ページ本体（html/body）がバウンド／引っ張られて
+   上下に動いてしまう（iOS Safariのラバーバンド／プルトゥリフレッシュ）挙動を
+   止めるための指定。各画面はスワイプでキャラ切替などの独自操作を実装してお
+   り、ページ自体が動いてしまうと体験を損なうため、常に完全に固定したい。
+   overscroll-behaviorはスクロール可能な子要素（バッグ画面のタブや装備選択
+   シートなど）の内部スクロールは妨げない。 */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
