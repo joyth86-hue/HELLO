@@ -59,10 +59,13 @@ function CharacterPane({ id, frame }: { id: string; frame: number }) {
         <div
           role="img"
           aria-label={id}
-          className="h-full select-none"
+          className="select-none"
           style={{
             aspectRatio: IDLE_FRAME_ASPECT,
-            maxWidth: "100%",
+            // 額縁の縁（マット風のinset box-shadow）にキャラクターの足元などが
+            // 重ならないよう、あえて額縁より一回り小さく表示して余白を持たせる。
+            height: "94%",
+            maxWidth: "94%",
             backgroundImage: `url(${idleSheet})`,
             backgroundSize: `${IDLE_SHEET_COLUMNS * 100}% ${IDLE_SHEET_ROWS * 100}%`,
             backgroundPosition: idleFrameBackgroundPosition(frame),
@@ -266,7 +269,7 @@ export default function CharacterViewPage() {
   };
 
   return (
-    <div className="relative h-screen touch-none overflow-hidden bg-background">
+    <div className="relative h-[100dvh] touch-none overflow-hidden bg-background">
       <GameBackground />
 
       <div className="relative z-10 flex h-full touch-none flex-col">
