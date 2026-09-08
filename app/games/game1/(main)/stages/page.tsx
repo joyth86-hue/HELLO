@@ -27,9 +27,6 @@ export default function StageSelectPage() {
       <div className="relative z-10 flex h-full flex-col">
         <div className="px-4 pb-2 pt-4">
           <h1 className="text-lg font-bold tracking-wide text-[#f4f1ff]">ステージ選択</h1>
-          <p className="mt-1 text-[11px] font-medium tracking-wide text-[#b8b3d9]">
-            クリア済み {maxClearedStage} ステージ
-          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-28">
@@ -45,15 +42,14 @@ export default function StageSelectPage() {
                     href={`/games/game1/battle?stage=${stage}`}
                     className="flex items-center justify-between rounded-xl border-2 border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.08)] px-4 py-3 text-[#eee9ff] backdrop-blur-sm"
                   >
-                    <div>
-                      <p className="font-bold">ステージ {stage}</p>
-                      <p className="text-[11px] text-[#b8b3d9]">
-                        {cleared ? "クリア済み・再挑戦できます" : "挑戦可能"}
-                      </p>
-                    </div>
-                    {cleared && (
+                    <p className="font-bold">ステージ {stage}</p>
+                    {cleared ? (
                       <span className="rounded-full bg-[rgba(201,195,255,0.25)] px-2.5 py-1 text-[10px] font-bold text-[#eee9ff]">
                         CLEAR
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-[#e0a233] px-2.5 py-1 text-[10px] font-bold text-[#171717]">
+                        TRY
                       </span>
                     )}
                   </Link>

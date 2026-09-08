@@ -26,6 +26,10 @@ export interface Game1SaveData {
   maxClearedStage: number;
   // バトルに参加させる（編成中の）キャラクターID。最大3人。
   activePartyIds: string[];
+  // まだ振り分けていない経験値ポイント（キャラクター画面でレベルアップに使う想定）。
+  expPoints: number;
+  // キャラID → レベル。キー自体が無いキャラは未設定＝レベル1として扱う。
+  characterLevels: Record<string, number>;
 }
 
 export const GAME1_ID = "game1";
@@ -60,6 +64,10 @@ export function isCharacterUnlocked(data: Game1SaveData, characterId: string): b
 
 export function getUnlockedCharacterIds(data: Game1SaveData): string[] {
   return CHARACTER_UNLOCK_ORDER.filter((id) => isCharacterUnlocked(data, id));
+}
+
+export function getCharacterLevel(data: Game1SaveData, characterId: string): number {
+  return data.characterLevels[characterId] ?? 1;
 }
 
 // 新しく仲間になったキャラクターを、編成人数が3人未満の間は自動で編成に加える
@@ -100,6 +108,8 @@ export const defaultGame1Data: Game1SaveData = {
   equipment: {},
   maxClearedStage: 0,
   activePartyIds: ["c01"],
+  expPoints: 0,
+  characterLevels: {},
 };
 
 export function loadGame1Data(): Game1SaveData {

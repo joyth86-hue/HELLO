@@ -12,7 +12,7 @@ const HOME_BACKGROUND = "/backgrounds/home/home_04_akane_koyuki_kaede_sayumi.png
 
 export default function Game1HomePage() {
   const [currency, setCurrency] = useState(0);
-  const [playCount, setPlayCount] = useState(0);
+  const [expPoints, setExpPoints] = useState(0);
 
   useEffect(() => {
     setCurrency(loadGlobalData().currency);
@@ -20,7 +20,7 @@ export default function Game1HomePage() {
     const data = loadGame1Data();
     const next = { ...data, playCount: data.playCount + 1 };
     saveGame1Data(next);
-    setPlayCount(next.playCount);
+    setExpPoints(next.expPoints);
   }, []);
 
   return (
@@ -32,16 +32,12 @@ export default function Game1HomePage() {
         className="absolute inset-0 h-full w-full object-cover"
       />
 
+      <div className="absolute right-4 top-4 z-10 rounded-xl border border-[rgba(201,195,255,0.5)] bg-[rgba(20,18,40,0.68)] px-3.5 py-2 text-right text-[11px] font-medium text-[#eee9ff] backdrop-blur-sm">
+        <p>所持金：{formatCurrency(currency)}</p>
+        <p>経験値：{expPoints.toLocaleString()}pt</p>
+      </div>
+
       <div className="relative z-10 flex min-h-screen flex-col items-center gap-8 p-6 pb-28 pt-20 text-center">
-        <h1 className="text-2xl font-bold tracking-wide text-[#f4f1ff] [text-shadow:0_2px_8px_rgba(0,0,0,0.6)]">
-          Game 1
-        </h1>
-
-        <div className="w-full max-w-sm rounded-2xl border-2 border-[rgba(201,195,255,0.55)] bg-[rgba(20,18,40,0.68)] p-6 text-left text-[#eee9ff] backdrop-blur-sm">
-          <p>共通通貨（全ゲーム共有）: {formatCurrency(currency)}</p>
-          <p>このゲームのプレイ回数: {playCount}</p>
-        </div>
-
         <Link
           href="/games/game1/stages"
           className={`${stickerButton} mt-auto rounded-full px-8 py-3`}

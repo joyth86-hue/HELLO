@@ -5,6 +5,7 @@ import { CHARACTERS, getCharacterByIndex } from "@/lib/characters";
 import { getCharacterBaseInfo } from "@/lib/characters-info";
 import {
   getCharacterEquipment,
+  getCharacterLevel,
   getUnlockedCharacterIds,
   loadGame1Data,
   saveGame1Data,
@@ -20,6 +21,13 @@ const SWIPE_THRESHOLD = 60;
 const SNAP_DURATION = 250;
 
 const EMPTY_EQUIPMENT: CharacterEquipment = { weapon: null, artifacts: [null, null, null] };
+
+// 会心率・会心ダメージの基礎値（docs/spec/adventure-system.mdのダメージ計算式案）。
+// アーティファクトの効果値がまだ無いため、装備による上乗せ分は今は反映していない。
+const BASE_CRIT_RATE = 10;
+const BASE_CRIT_DAMAGE = 150;
+// 属性相性表が未定のため、属性耐性は仮に0%表示。
+const PLACEHOLDER_ELEMENT_RESISTANCE = 0;
 
 type PickerTarget = { kind: "weapon" } | { kind: "artifact"; index: 0 | 1 | 2 };
 
@@ -98,6 +106,7 @@ export default function CharacterViewPage() {
   const nextId = unlockedCharacters[mod(safeIndex + 1, unlockedCharacters.length)].id;
   const currentBaseInfo = getCharacterBaseInfo(currentId);
   const isInParty = saveData ? saveData.activePartyIds.includes(currentId) : false;
+  const level = saveData ? getCharacterLevel(saveData, currentId) : 1;
 
   const currentEquipment = saveData ? getCharacterEquipment(saveData, currentId) : EMPTY_EQUIPMENT;
   const weaponItem = currentEquipment.weapon ? getItemBaseInfo(currentEquipment.weapon) : undefined;
@@ -229,17 +238,35 @@ export default function CharacterViewPage() {
         <div className="px-4 pt-4">
           <p className="mb-1.5 text-[11px] font-medium tracking-wide text-[#b8b3d9]">STATUS</p>
           <div className="rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2.5 text-sm text-[#eee9ff] backdrop-blur-sm">
-            <div className="flex justify-between">
-              <span>HP</span>
-              <span className="font-bold tabular-nums">{stats.hp.toLocaleString()}</span>
+            <div className="mb-2 flex items-baseline justify-between border-b border-[rgba(201,195,255,0.25)] pb-2">
+              <span className="text-[#b8b3d9]">レベル</span>
+              <span className="font-bold tabular-nums">{level}</span>
             </div>
-            <div className="flex justify-between">
-              <span>攻撃力</span>
-              <span className="font-bold tabular-nums">{stats.atk.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>防御力</span>
-              <span className="font-bold tabular-nums">{stats.def.toLocaleString()}</span>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+              <div className="flex justify-between">
+                <span>HP</span>
+                <span className="font-bold tabular-nums">{stats.hp.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>会心率</span>
+                <span className="font-bold tabular-nums">{BASE_CRIT_RATE}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span>攻撃力</span>
+                <span className="font-bold tabular-nums">{stats.atk.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>会心ダメージ</span>
+                <span className="font-bold tabular-nums">{BASE_CRIT_DAMAGE}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span>防御力</span>
+                <span className="font-bold tabular-nums">{stats.def.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>属性耐性</span>
+                <span className="font-bold tabular-nums">{PLACEHOLDER_ELEMENT_RESISTANCE}%</span>
+              </div>
             </div>
           </div>
 
