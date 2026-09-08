@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { formatCurrency, loadGlobalData } from "@/lib/storage";
 import { loadGame1Data, saveGame1Data } from "@/lib/game1-data";
+import { stickerButton } from "@/lib/ui";
 
 // 仲間が増えるたびに背景も賑やかになる想定（home_01=1人〜home_04=4人）。
 // パーティ編成の仕組みがまだ無いため、現状はテストとしてhome_04で固定。
@@ -39,6 +41,11 @@ export default function Game1HomePage() {
           <p>共通通貨（全ゲーム共有）: {formatCurrency(currency)}</p>
           <p>このゲームのプレイ回数: {playCount}</p>
         </div>
+
+        {/* 戦闘画面の動作確認用の仮ボタン。正式な入り口が決まったら撤去する。 */}
+        <Link href="/games/game1/battle" className={`${stickerButton} rounded-full px-8 py-3`}>
+          ⚔ 戦闘テスト（仮）
+        </Link>
       </div>
     </div>
   );

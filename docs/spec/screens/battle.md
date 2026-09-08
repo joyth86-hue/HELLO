@@ -1,6 +1,6 @@
-# 戦闘画面（設計中・未実装）
+# 戦闘画面（配置設計）
 
-まだアプリには実装しておらず、配置についてArtifactでモックアップを見ながら検討している段階。実データは [lib/battle-stages.ts](../../lib/battle-stages.ts)（ステージ）、[lib/characters-info.ts](../../lib/characters-info.ts)（仲間）、[lib/enemies-info.ts](../../lib/enemies-info.ts)（敵）を参照。
+このファイルは配置（レイアウト）の設計をまとめたもの。**実際にターン制で通常攻撃を一巡させる動作確認版が[battle-test.md](./battle-test.md)（`/games/game1/battle`）として実装済み**（本実装ではなく確認用）。実データは [lib/battle-stages.ts](../../lib/battle-stages.ts)（ステージ）、[lib/characters-info.ts](../../lib/characters-info.ts)（仲間）、[lib/enemies-info.ts](../../lib/enemies-info.ts)（敵）を参照。
 
 ## 画面構成
 
@@ -28,6 +28,6 @@ Artifactで作成した配置サンプル（[戦闘画面 仲間＋敵配置案]
 
 ## 今後
 
-- 上記モックアップの位置・サイズを、実際のアプリ画面（ルート未定）に実装する
+- 上記モックアップの位置・サイズは[battle-test.md](./battle-test.md)にそのまま実装済み。ターンメニュー・ダメージ計算などの本実装は今後
 - 敵側も同様に、キャンバスの余白を考慮した詰め位置の調整が必要になる可能性がある
 - 「冒険」を戦闘画面だけで構成するか、戦闘外の探索フィールドを別途用意するかは未定（[fields.md](../fields.md)参照）

@@ -13,6 +13,7 @@
 | `/games/game1/shop` | ショップ画面 | 未実装（プレースホルダーのみ） |
 | `/games/game1/character` | キャラクター確認画面（仲間タブ） | [screens/character-view.md](./screens/character-view.md)参照 |
 | `/games/game1/bag` | バッグの中身画面 | [screens/bag.md](./screens/bag.md)参照 |
+| `/games/game1/battle` | 戦闘画面（動作確認版） | [screens/battle-test.md](./screens/battle-test.md)参照。下部ナビゲーションバーの管理外の独立画面 |
 
 上記5画面（ホーム/マップ/ショップ/キャラクター/バッグ）は、画面下部の[下部ナビゲーションバー](./screens/bottom-nav.md)（マップ/ショップ/冒険/仲間/バッグの5タブ）で直接切り替える構成になっている（以前の「ホーム画面から個別画面へ行って✕で戻る」構成から変更した）。
 
@@ -28,6 +29,8 @@
                                                                 ├─ 冒険 → /games/game1/home
                                                                 ├─ 仲間 → /games/game1/character
                                                                 └─ バッグ → /games/game1/bag
+                                                            └─ （動作確認用の仮ボタン）「⚔ 戦闘テスト（仮）」→ /games/game1/battle
+                                                                            └─ 勝敗が決まると自動で /games/game1/home に戻る
 ```
 
 ## 現状の制約・未実装事項
