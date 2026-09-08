@@ -6,14 +6,14 @@
 
 ## 仲間キャラクター
 
-| ID | 名称 | 属性 | 武器種 | 立ち絵 | 通常 | 攻撃 | ダメージ |
+| ID | 名称 | 属性 | 武器種 | キャラクター画面（待機アニメーション） | 通常 | 攻撃 | ダメージ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| c01 | アカネ | 炎 | 片手剣 | c01_t01.png | c01_d01.png | c01_d02.png | c01_d03.png |
-| c02 | カエデ | 草 | 法器 | c02_t01.png | c02_d01.png | c02_d02.png | c02_d03.png |
-| c03 | コユキ | 氷 | 法器 | c03_t01.png | c03_d01.png | c03_d02.png | c03_d03.png |
-| c04 | サユミ | 草 | 弓 | c04_t01.png | c04_d01.png | c04_d02.png | c04_d03.png |
+| c01 | アカネ | 炎 | 片手剣 | idle/c01_idle_sheet.png | c01_d01.png | c01_d02.png | c01_d03.png |
+| c02 | カエデ | 草 | 法器 | idle/c02_idle_sheet.png | c02_d01.png | c02_d02.png | c02_d03.png |
+| c03 | コユキ | 氷 | 法器 | idle/c03_idle_sheet.png | c03_d01.png | c03_d02.png | c03_d03.png |
+| c04 | サユミ | 草 | 弓 | idle/c04_idle_sheet.png | c04_d01.png | c04_d02.png | c04_d03.png |
 
-画像パスはすべて `public/characters/` 配下。詳細は [characters.md](./characters.md) 参照。
+画像パスはすべて `public/characters/` 配下。キャラクター画面用の待機アニメーション（ドット絵スプライトシート）の詳細は[character-view.md](./screens/character-view.md)参照。詳細は [characters.md](./characters.md) 参照。
 
 ## 敵キャラクター
 

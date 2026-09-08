@@ -7,7 +7,7 @@ export interface CharacterBaseInfo {
   element: string;
   weaponType: string;
   assets: {
-    standing: string;
+    idleSheet: string;
     battleIdle: string;
     battleAttack: string;
     battleDamage: string;
@@ -21,7 +21,7 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
     element: "炎",
     weaponType: "片手剣",
     assets: {
-      standing: "/characters/c01_t01.png",
+      idleSheet: "/characters/idle/c01_idle_sheet.png",
       battleIdle: "/characters/c01_d01.png",
       battleAttack: "/characters/c01_d02.png",
       battleDamage: "/characters/c01_d03.png",
@@ -33,7 +33,7 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
     element: "草",
     weaponType: "法器",
     assets: {
-      standing: "/characters/c02_t01.png",
+      idleSheet: "/characters/idle/c02_idle_sheet.png",
       battleIdle: "/characters/c02_d01.png",
       battleAttack: "/characters/c02_d02.png",
       battleDamage: "/characters/c02_d03.png",
@@ -45,7 +45,7 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
     element: "氷",
     weaponType: "法器",
     assets: {
-      standing: "/characters/c03_t01.png",
+      idleSheet: "/characters/idle/c03_idle_sheet.png",
       battleIdle: "/characters/c03_d01.png",
       battleAttack: "/characters/c03_d02.png",
       battleDamage: "/characters/c03_d03.png",
@@ -57,7 +57,7 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
     element: "草",
     weaponType: "弓",
     assets: {
-      standing: "/characters/c04_t01.png",
+      idleSheet: "/characters/idle/c04_idle_sheet.png",
       battleIdle: "/characters/c04_d01.png",
       battleAttack: "/characters/c04_d02.png",
       battleDamage: "/characters/c04_d03.png",

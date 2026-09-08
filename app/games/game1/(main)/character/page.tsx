@@ -20,6 +20,22 @@ import GameBackground from "@/components/GameBackground";
 const SWIPE_THRESHOLD = 60;
 const SNAP_DURATION = 250;
 
+// 待機アニメーションのスプライトシート仕様（hirogames_images/CHARACTER_SCREEN_ASSETS.md参照）。
+// 1コマ486x810px、8列×5行、40コマを100ms間隔でループ。
+const IDLE_SHEET_COLUMNS = 8;
+const IDLE_SHEET_ROWS = 5;
+const IDLE_FRAME_COUNT = 40;
+const IDLE_FRAME_DURATION_MS = 100;
+const IDLE_FRAME_ASPECT = "486 / 810";
+
+function idleFrameBackgroundPosition(frame: number) {
+  const col = frame % IDLE_SHEET_COLUMNS;
+  const row = Math.floor(frame / IDLE_SHEET_COLUMNS);
+  const x = (col / (IDLE_SHEET_COLUMNS - 1)) * 100;
+  const y = (row / (IDLE_SHEET_ROWS - 1)) * 100;
+  return `${x}% ${y}%`;
+}
+
 const EMPTY_EQUIPMENT: CharacterEquipment = { weapon: null, artifacts: [null, null, null] };
 
 // 会心率・会心ダメージの基礎値（docs/spec/adventure-system.mdのダメージ計算式案）。
@@ -35,15 +51,26 @@ function mod(n: number, m: number) {
   return ((n % m) + m) % m;
 }
 
-function CharacterPane({ id }: { id: string }) {
+function CharacterPane({ id, frame }: { id: string; frame: number }) {
+  const idleSheet = getCharacterBaseInfo(id)?.assets.idleSheet;
   return (
-    <div className="flex h-full w-1/3 flex-shrink-0 items-center justify-center">
-      <img
-        src={`/characters/${id}_t01.png`}
-        alt={id}
-        className="max-h-full max-w-full select-none object-contain"
-        draggable={false}
-      />
+    <div className="flex h-full w-1/3 flex-shrink-0 items-center justify-center overflow-hidden">
+      {idleSheet && (
+        <div
+          role="img"
+          aria-label={id}
+          className="h-full select-none"
+          style={{
+            aspectRatio: IDLE_FRAME_ASPECT,
+            maxWidth: "100%",
+            backgroundImage: `url(${idleSheet})`,
+            backgroundSize: `${IDLE_SHEET_COLUMNS * 100}% ${IDLE_SHEET_ROWS * 100}%`,
+            backgroundPosition: idleFrameBackgroundPosition(frame),
+            backgroundRepeat: "no-repeat",
+            imageRendering: "pixelated",
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -86,11 +113,19 @@ export default function CharacterViewPage() {
   const [partyWarning, setPartyWarning] = useState(false);
   const frameRef = useRef<HTMLDivElement>(null);
   const pointerStartX = useRef<number | null>(null);
+  const [idleFrame, setIdleFrame] = useState(0);
 
   useEffect(() => {
     const synced = syncActivePartyWithUnlocks(loadGame1Data());
     saveGame1Data(synced);
     setSaveData(synced);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setIdleFrame((f) => (f + 1) % IDLE_FRAME_COUNT);
+    }, IDLE_FRAME_DURATION_MS);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -309,9 +344,9 @@ export default function CharacterViewPage() {
                 transition: isSettling ? `transform ${SNAP_DURATION}ms ease-out` : "none",
               }}
             >
-              <CharacterPane id={prevId} />
-              <CharacterPane id={currentId} />
-              <CharacterPane id={nextId} />
+              <CharacterPane id={prevId} frame={idleFrame} />
+              <CharacterPane id={currentId} frame={idleFrame} />
+              <CharacterPane id={nextId} frame={idleFrame} />
             </div>
           </div>
         </div>

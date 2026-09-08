@@ -32,9 +32,15 @@ export default function Game1HomePage() {
         className="absolute inset-0 h-full w-full object-cover"
       />
 
-      <div className="absolute right-4 top-4 z-10 rounded-xl border border-[rgba(201,195,255,0.5)] bg-[rgba(20,18,40,0.68)] px-3.5 py-2 text-right text-[11px] font-medium text-[#eee9ff] backdrop-blur-sm">
-        <p>所持金：{formatCurrency(currency)}</p>
-        <p>経験値：{expPoints.toLocaleString()}pt</p>
+      <div className="absolute right-4 top-4 z-10 w-[240px] rounded-xl border border-[rgba(201,195,255,0.5)] bg-[rgba(20,18,40,0.68)] px-3.5 py-2 text-[11px] font-medium text-[#eee9ff] backdrop-blur-sm">
+        <p className="flex justify-between gap-2">
+          <span>所持金：</span>
+          <span className="tabular-nums">{formatCurrency(currency)}</span>
+        </p>
+        <p className="flex justify-between gap-2">
+          <span>経験値：</span>
+          <span className="tabular-nums">{expPoints.toLocaleString()}pt</span>
+        </p>
       </div>
 
       <div className="relative z-10 flex min-h-screen flex-col items-center gap-8 p-6 pb-28 pt-20 text-center">

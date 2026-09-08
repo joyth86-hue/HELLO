@@ -44,11 +44,11 @@ export default function StageSelectPage() {
                   >
                     <p className="font-bold">ステージ {stage}</p>
                     {cleared ? (
-                      <span className="rounded-full bg-[rgba(201,195,255,0.25)] px-2.5 py-1 text-[10px] font-bold text-[#eee9ff]">
+                      <span className="w-16 rounded-full bg-[rgba(201,195,255,0.25)] py-1 text-center text-[10px] font-bold text-[#eee9ff]">
                         CLEAR
                       </span>
                     ) : (
-                      <span className="rounded-full bg-[#e0a233] px-2.5 py-1 text-[10px] font-bold text-[#171717]">
+                      <span className="w-16 rounded-full bg-[#e0a233] py-1 text-center text-[10px] font-bold text-[#171717]">
                         TRY
                       </span>
                     )}
