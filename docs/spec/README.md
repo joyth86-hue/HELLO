@@ -27,6 +27,7 @@ CLAUDE.md本体には仕様を書かず、常にこの分冊側を更新する�
 | [fields.md](./fields.md) | 戦闘背景（フィールド）素材の管理方法 |
 | [items.md](./items.md) | アイテム（武器・アーティファクト）素材と基本情報の管理方法 |
 | [visual-design.md](./visual-design.md) | 配色などビジュアルデザインの方針 |
+| [ui-buttons.md](./ui-buttons.md) | 共通UIボタン素材（ホーム画面導線・戦闘画面の攻撃/スキルボタン用）の管理方法 |
 
 ## 今後ファイルが増える場合の目安
 
