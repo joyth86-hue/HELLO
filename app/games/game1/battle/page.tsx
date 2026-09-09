@@ -3,23 +3,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCharacterBaseInfo } from "@/lib/characters-info";
+import { getCharacterStatsAtLevel } from "@/lib/character-growth";
 import { getEnemyBaseInfo } from "@/lib/enemies-info";
-import { loadGame1Data, saveGame1Data } from "@/lib/game1-data";
+import {
+  getScaledEnemyStats,
+  getFieldImagePathForStage,
+  pickRandomEnemyFromPattern,
+} from "@/lib/enemy-scaling";
+import { calculateDamage } from "@/lib/combat";
+import { getCharacterLevel, loadGame1Data, saveGame1Data, type Game1SaveData } from "@/lib/game1-data";
 import { getCharacterSkillKit } from "@/lib/skills-info";
 
-// テスト用の戦闘画面。まだ実際のパーティ編成・敵の出現テーブルとは
-// 繋がっておらず、以下の仮データ・仮ステータスで通常攻撃だけを
-// 一巡させて動作確認するためのもの。詳細はdocs/spec/screens/battle-test.md参照。
-//
+// 本実装のステージ内10バトル連戦（S-1〜S-10）。詳細はdocs/spec/screens/battle.md参照。
 // ステージ選択画面（/games/game1/stages）からは ?stage=N 付きで遷移してくる。
-// 実際の10バトル連戦・敵構成のステージ切り替えはまだ未実装で、勝利した場合に
-// そのステージ番号をmaxClearedStageに反映するところまでを先行してつないでいる
-// （ステージ進行・キャラクター解放の動作確認のため）。
-const TEST_ALLY_IDS = ["c01", "c02", "c03"];
-const TEST_ENEMY_IDS = ["e01", "e02", "e03"];
-const UNIT_HP = 200;
-const ATTACK_POWER = 100;
-const BACKGROUND = "/backgrounds/fields/f01_sougen_hiru.png";
+//
+// 1ステージ＝10バトル連戦。S-1〜S-9は敵3体、S-10（ボス）は敵1体。HPは連戦中
+// ずっと持ち越し（S-1開始時に全回復）。全滅したらそのステージは未クリアの
+// まま、経験値も加算されない。S-10のボスを倒すとステージクリアとなり、
+// 貯まった経験値ポイントとmaxClearedStageをまとめて保存する。
+const BATTLES_PER_STAGE = 10;
+const NORMAL_ENEMY_COUNT = 3;
 
 // 左右対称の配置。Artifactで検討したモックアップ（top 42/55/68%, 幅16%）と同じ値。
 const SLOT_POSITIONS = [
@@ -27,6 +30,8 @@ const SLOT_POSITIONS = [
   { top: "55%", z: 2 },
   { top: "68%", z: 1 },
 ];
+// 敵1体（ボス戦）のときは中央のスロットに配置する。
+const BOSS_SLOT_INDEX = 1;
 
 type Pose = "idle" | "attack" | "damage";
 type DamagePhase = "hidden" | "in" | "visible" | "out";
@@ -39,10 +44,15 @@ interface BattleUnit {
   name: string;
   hp: number;
   maxHp: number;
+  atk: number;
+  def: number;
+  exp: number; // 敵のみ使用（倒したときに加算する経験値）
   alive: boolean;
   pose: Pose;
   stepped: boolean;
   damagePhase: DamagePhase;
+  lastDamage: number;
+  lastCrit: boolean;
 }
 
 function wait(ms: number) {
@@ -60,46 +70,69 @@ function poseAsset(unit: BattleUnit): string {
   return assets.battleIdle;
 }
 
-function buildInitialUnits(): BattleUnit[] {
-  const allies: BattleUnit[] = TEST_ALLY_IDS.map((id, slot) => ({
-    key: `ally-${slot}`,
-    side: "ally",
-    slot,
-    id,
-    name: getCharacterBaseInfo(id)?.name ?? id,
-    hp: UNIT_HP,
-    maxHp: UNIT_HP,
-    alive: true,
-    pose: "idle",
-    stepped: false,
-    damagePhase: "hidden",
-  }));
-  const enemies: BattleUnit[] = TEST_ENEMY_IDS.map((id, slot) => ({
-    key: `enemy-${slot}`,
-    side: "enemy",
-    slot,
-    id,
-    name: getEnemyBaseInfo(id)?.name ?? id,
-    hp: UNIT_HP,
-    maxHp: UNIT_HP,
-    alive: true,
-    pose: "idle",
-    stepped: false,
-    damagePhase: "hidden",
-  }));
-  return [...allies, ...enemies];
+function buildAllyUnits(partyIds: string[], saveData: Game1SaveData): BattleUnit[] {
+  return partyIds.map((id, slot) => {
+    const level = getCharacterLevel(saveData, id);
+    const stats = getCharacterStatsAtLevel(id, level);
+    return {
+      key: `ally-${slot}`,
+      side: "ally",
+      slot,
+      id,
+      name: getCharacterBaseInfo(id)?.name ?? id,
+      hp: stats.hp,
+      maxHp: stats.hp,
+      atk: stats.atk,
+      def: stats.def,
+      exp: 0,
+      alive: true,
+      pose: "idle",
+      stepped: false,
+      damagePhase: "hidden",
+      lastDamage: 0,
+      lastCrit: false,
+    };
+  });
 }
 
-export default function BattleTestPage() {
+function buildEnemyUnits(stage: number, isBoss: boolean): BattleUnit[] {
+  const count = isBoss ? 1 : NORMAL_ENEMY_COUNT;
+  return Array.from({ length: count }, (_, i) => {
+    const enemyId = pickRandomEnemyFromPattern(stage);
+    const scaled = getScaledEnemyStats(enemyId, stage, isBoss);
+    return {
+      key: `enemy-${i}`,
+      side: "enemy",
+      slot: isBoss ? BOSS_SLOT_INDEX : i,
+      id: enemyId,
+      name: getEnemyBaseInfo(enemyId)?.name ?? enemyId,
+      hp: scaled.hp,
+      maxHp: scaled.hp,
+      atk: scaled.atk,
+      def: scaled.def,
+      exp: scaled.exp,
+      alive: true,
+      pose: "idle",
+      stepped: false,
+      damagePhase: "hidden",
+      lastDamage: 0,
+      lastCrit: false,
+    };
+  });
+}
+
+export default function BattlePage() {
   const router = useRouter();
-  const [units, setUnits] = useState<BattleUnit[]>(() => buildInitialUnits());
+  const [units, setUnits] = useState<BattleUnit[]>([]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [awaitingPlayer, setAwaitingPlayer] = useState(false);
-  const [result, setResult] = useState<"victory" | "defeat" | null>(null);
+  const [result, setResult] = useState<"clear" | "defeat" | null>(null);
   const [turnMessage, setTurnMessage] = useState("");
   const [stageLabel, setStageLabel] = useState(1);
+  const [subBattleLabel, setSubBattleLabel] = useState(1);
+  const [expEarned, setExpEarned] = useState(0);
 
-  const unitsRef = useRef<BattleUnit[]>(units);
+  const unitsRef = useRef<BattleUnit[]>([]);
   const startedRef = useRef(false);
   const resolvePlayerActionRef = useRef<(() => void) | null>(null);
   const stageNumberRef = useRef(1);
@@ -120,6 +153,7 @@ export default function BattleTestPage() {
   async function performAttack(attackerKey: string, targetKey: string) {
     const attacker = getUnit(attackerKey);
     const target = getUnit(targetKey);
+    const { damage, isCrit } = calculateDamage(attacker.atk, target.def);
 
     attacker.stepped = true;
     sync();
@@ -129,9 +163,11 @@ export default function BattleTestPage() {
     sync();
     await wait(300);
 
-    target.hp = Math.max(0, target.hp - ATTACK_POWER);
+    target.hp = Math.max(0, target.hp - damage);
     target.pose = "damage";
     target.damagePhase = "in";
+    target.lastDamage = damage;
+    target.lastCrit = isCrit;
     sync();
     // requestAnimationFrameはタブが非表示（バックグラウンド）だと発火しないため、
     // CSSトランジションの開始待ちにはsetTimeoutベースのwait()を使う。
@@ -155,60 +191,95 @@ export default function BattleTestPage() {
     await wait(300);
   }
 
-  async function runTurn(order: string[], index: number) {
-    try {
-      await runTurnInner(order, index);
-    } catch (err) {
-      // 想定外のエラーで進行不能になった場合に、無言のまま固まるのを避ける保険。
-      console.error("battle turn failed", err);
-      setResult("defeat");
+  // 1回分のバトル（S-s）を、決着がつくまで進める。
+  async function runBattleLoop(): Promise<"victory" | "defeat"> {
+    let index = 0;
+    const order = unitsRef.current.map((u) => u.key);
+    for (;;) {
+      const alliesAlive = unitsRef.current.some((u) => u.side === "ally" && u.alive);
+      const enemiesAlive = unitsRef.current.some((u) => u.side === "enemy" && u.alive);
+      if (!enemiesAlive) {
+        setActiveKey(null);
+        return "victory";
+      }
+      if (!alliesAlive) {
+        setActiveKey(null);
+        return "defeat";
+      }
+
+      const key = order[index % order.length];
+      index++;
+      const unit = getUnit(key);
+      if (!unit.alive) continue;
+
+      setActiveKey(key);
+      setTurnMessage(`${unit.name}のターン`);
+
+      if (unit.side === "enemy") {
+        await wait(400);
+        const target = randomAliveTarget("ally");
+        await performAttack(unit.key, target.key);
+        continue;
+      }
+
+      // 仲間のターン：通常攻撃ボタンが押されるまで待つ
+      setAwaitingPlayer(true);
+      await new Promise<void>((resolve) => {
+        resolvePlayerActionRef.current = resolve;
+      });
+      setAwaitingPlayer(false);
+
+      const target = randomAliveTarget("enemy");
+      if (target) {
+        await performAttack(unit.key, target.key);
+      }
     }
   }
 
-  async function runTurnInner(order: string[], index: number) {
-    const alliesAlive = unitsRef.current.some((u) => u.side === "ally" && u.alive);
-    const enemiesAlive = unitsRef.current.some((u) => u.side === "enemy" && u.alive);
-    if (!enemiesAlive) {
-      setActiveKey(null);
-      setResult("victory");
-      return;
-    }
-    if (!alliesAlive) {
-      setActiveKey(null);
+  // ステージ全体（S-1〜S-10）を通しで進める。
+  async function playStage(stage: number, saveData: Game1SaveData) {
+    try {
+      let allies = buildAllyUnits(saveData.activePartyIds, saveData);
+      let totalExp = 0;
+
+      for (let sub = 1; sub <= BATTLES_PER_STAGE; sub++) {
+        setSubBattleLabel(sub);
+        const isBoss = sub === BATTLES_PER_STAGE;
+        const enemies = buildEnemyUnits(stage, isBoss);
+        unitsRef.current = [...allies, ...enemies];
+        sync();
+
+        const outcome = await runBattleLoop();
+        if (outcome === "defeat") {
+          setExpEarned(totalExp);
+          setResult("defeat");
+          return;
+        }
+
+        totalExp += enemies.reduce((sum, e) => sum + e.exp, 0);
+        allies = unitsRef.current.filter((u) => u.side === "ally");
+
+        if (sub < BATTLES_PER_STAGE) {
+          setTurnMessage(`${sub}戦目クリア！`);
+          await wait(700);
+        }
+      }
+
+      // S-10（ボス）を撃破：ステージクリア
+      const data = loadGame1Data();
+      const next: Game1SaveData = {
+        ...data,
+        maxClearedStage: Math.max(data.maxClearedStage, stage),
+        expPoints: data.expPoints + totalExp,
+      };
+      saveGame1Data(next);
+      setExpEarned(totalExp);
+      setResult("clear");
+    } catch (err) {
+      // 想定外のエラーで進行不能になった場合に、無言のまま固まるのを避ける保険。
+      console.error("battle stage failed", err);
       setResult("defeat");
-      return;
     }
-
-    const key = order[index % order.length];
-    const unit = getUnit(key);
-    if (!unit.alive) {
-      await runTurn(order, index + 1);
-      return;
-    }
-
-    setActiveKey(key);
-    setTurnMessage(`${unit.name}のターン`);
-
-    if (unit.side === "enemy") {
-      await wait(400);
-      const target = randomAliveTarget("ally");
-      await performAttack(unit.key, target.key);
-      await runTurn(order, index + 1);
-      return;
-    }
-
-    // 仲間のターン：通常攻撃ボタンが押されるまで待つ
-    setAwaitingPlayer(true);
-    await new Promise<void>((resolve) => {
-      resolvePlayerActionRef.current = resolve;
-    });
-    setAwaitingPlayer(false);
-
-    const target = randomAliveTarget("enemy");
-    if (target) {
-      await performAttack(unit.key, target.key);
-    }
-    await runTurn(order, index + 1);
   }
 
   useEffect(() => {
@@ -220,21 +291,18 @@ export default function BattleTestPage() {
 
     if (startedRef.current) return;
     startedRef.current = true;
-    const order = unitsRef.current.map((u) => u.key);
-    runTurn(order, 0);
+
+    const saveData = loadGame1Data();
+    if (saveData.activePartyIds.length === 0) {
+      router.push("/games/game1/home");
+      return;
+    }
+    playStage(resolvedStage, saveData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!result) return;
-    if (result === "victory") {
-      const data = loadGame1Data();
-      const next = {
-        ...data,
-        maxClearedStage: Math.max(data.maxClearedStage, stageNumberRef.current),
-      };
-      saveGame1Data(next);
-    }
     const t = window.setTimeout(() => {
       router.push("/games/game1/home");
     }, 1800);
@@ -246,17 +314,20 @@ export default function BattleTestPage() {
     resolvePlayerActionRef.current = null;
   }
 
+  const background = getFieldImagePathForStage(stageNumberRef.current);
+
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden bg-black">
       <img
-        src={BACKGROUND}
+        src={background}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 h-full w-full object-cover"
       />
 
       <div className="absolute left-4 top-[calc(1rem_+_env(safe-area-inset-top))] z-20 rounded-full bg-black/60 px-3 py-1 text-[11px] font-bold text-white">
-        ステージ {stageLabel}
+        ステージ {stageLabel} - {subBattleLabel}/{BATTLES_PER_STAGE}
+        {subBattleLabel === BATTLES_PER_STAGE ? "（ボス）" : ""}
       </div>
 
       {turnMessage && !result && (
@@ -294,7 +365,8 @@ export default function BattleTestPage() {
                   transition: "opacity 150ms ease-out",
                 }}
               >
-                -{ATTACK_POWER}
+                -{unit.lastDamage}
+                {unit.lastCrit ? " 会心!" : ""}
               </span>
               <img
                 src={poseAsset(unit)}
@@ -311,10 +383,15 @@ export default function BattleTestPage() {
       })}
 
       {result && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60">
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/60">
           <p className="text-3xl font-extrabold text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.8)]">
-            {result === "victory" ? "勝利！" : "敗北…"}
+            {result === "clear" ? "ステージクリア！" : "敗北…"}
           </p>
+          {result === "clear" && (
+            <p className="text-sm font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
+              獲得経験値：{expEarned}pt
+            </p>
+          )}
         </div>
       )}
 

@@ -2,6 +2,7 @@
 // 他のゲームからは参照しない想定。詳細はdocs/spec/save-data.mdを参照。
 
 import { loadGameData, saveGameData } from "./storage";
+import { levelFromInvestedExp } from "./character-growth";
 
 export interface InventoryEntry {
   itemId: string;
@@ -26,10 +27,13 @@ export interface Game1SaveData {
   maxClearedStage: number;
   // バトルに参加させる（編成中の）キャラクターID。最大3人。
   activePartyIds: string[];
-  // まだ振り分けていない経験値ポイント（キャラクター画面でレベルアップに使う想定）。
+  // まだキャラクターに割り振っていない経験値ポイント（戦闘のステージクリアで加算、
+  // キャラクター画面の「訓練」でキャラに投入して消費する）。
   expPoints: number;
-  // キャラID → レベル。キー自体が無いキャラは未設定＝レベル1として扱う。
-  characterLevels: Record<string, number>;
+  // キャラID → そのキャラにこれまで投入した経験値ポイントの累計。
+  // レベルはここから逆算する（lib/character-growth.tsのlevelFromInvestedExp）。
+  // キー自体が無いキャラは0（＝レベル1）として扱う。
+  characterInvestedExp: Record<string, number>;
   // テストプレイ用の全解放モード。詳細はlib/test-mode.ts参照。
   testMode: boolean;
 }
@@ -69,7 +73,28 @@ export function getUnlockedCharacterIds(data: Game1SaveData): string[] {
 }
 
 export function getCharacterLevel(data: Game1SaveData, characterId: string): number {
-  return data.characterLevels[characterId] ?? 1;
+  return levelFromInvestedExp(data.characterInvestedExp[characterId] ?? 0);
+}
+
+// 未振り分けの経験値ポイントから、指定した量をキャラクターに投入してレベルを上げる。
+// amountがexpPointsを超える場合は、超えた分は投入せずexpPoints全額を使う
+// （マイナス残高にはしない）。amountが0以下の場合は何もしない。
+export function investExpInCharacter(
+  data: Game1SaveData,
+  characterId: string,
+  amount: number
+): Game1SaveData {
+  const spend = Math.max(0, Math.min(Math.floor(amount), data.expPoints));
+  if (spend <= 0) return data;
+  const currentInvested = data.characterInvestedExp[characterId] ?? 0;
+  return {
+    ...data,
+    expPoints: data.expPoints - spend,
+    characterInvestedExp: {
+      ...data.characterInvestedExp,
+      [characterId]: currentInvested + spend,
+    },
+  };
 }
 
 // 新しく仲間になったキャラクターを、編成人数が3人未満の間は自動で編成に加える
@@ -111,7 +136,7 @@ export const defaultGame1Data: Game1SaveData = {
   maxClearedStage: 0,
   activePartyIds: ["c01"],
   expPoints: 0,
-  characterLevels: {},
+  characterInvestedExp: {},
   testMode: false,
 };
 

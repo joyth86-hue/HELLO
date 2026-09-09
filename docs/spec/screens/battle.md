@@ -1,6 +1,6 @@
 # 戦闘画面（配置設計）
 
-このファイルは配置（レイアウト）の設計をまとめたもの。**実際にターン制で通常攻撃を一巡させる動作確認版が[battle-test.md](./battle-test.md)（`/games/game1/battle`）として実装済み**（本実装ではなく確認用）。実データは [lib/battle-stages.ts](../../lib/battle-stages.ts)（ステージ）、[lib/characters-info.ts](../../lib/characters-info.ts)（仲間）、[lib/enemies-info.ts](../../lib/enemies-info.ts)（敵）を参照。
+このファイルは配置（レイアウト）の設計をまとめたもの。**この配置を使った戦闘の本実装（100ステージ・10連戦）は[battle-test.md](./battle-test.md)（`/games/game1/battle`）を参照**。実データは [lib/character-growth.ts](../../lib/character-growth.ts)（仲間のレベル成長）、[lib/enemy-scaling.ts](../../lib/enemy-scaling.ts)（敵の出現パターン・強さ）、[lib/characters-info.ts](../../lib/characters-info.ts)（仲間の基本情報）、[lib/enemies-info.ts](../../lib/enemies-info.ts)（敵の基本情報）を参照。
 
 ## 画面構成
 
@@ -18,9 +18,8 @@
 
 ## 敵の配置
 
-- どのステージでどの敵をどの位置に出すかは、[lib/battle-stages.ts](../../lib/battle-stages.ts)の`enemyIds`（3要素）で決まる
-- `enemyIds`の2体目・3体目が`null`の場合は、そのスロットに敵を配置しない
-- 敵側は仲間と違い「何体編成するか」をプレイヤーが選ぶものではなく、ステージ側で固定的に決まる
+- どのステージでどの敵を何体出すかは、ステージ番号から計算で決まる（[lib/enemy-scaling.ts](../../lib/enemy-scaling.ts)、詳細は[adventure-system.md](../adventure-system.md#敵の出現パターン強さ背景)参照）。通常バトル（`S-1`〜`S-9`）は3体、ボス戦（`S-10`）は1体（中央スロットに配置、他は空）
+- 敵側は仲間と違い「何体編成するか」をプレイヤーが選ぶものではなく、ステージ側で自動的に決まる
 
 ## 検討中のモックアップ
 
@@ -28,6 +27,6 @@ Artifactで作成した配置サンプル（[戦闘画面 仲間＋敵配置案]
 
 ## 今後
 
-- 上記モックアップの位置・サイズは[battle-test.md](./battle-test.md)にそのまま実装済み。ターンメニュー・ダメージ計算などの本実装は今後
+- 上記モックアップの位置・サイズは[battle-test.md](./battle-test.md)にそのまま実装済み。ターン進行・ダメージ計算・100ステージ分の敵生成も本実装済み（[adventure-system.md](../adventure-system.md)参照）
 - 敵側も同様に、キャンバスの余白を考慮した詰め位置の調整が必要になる可能性がある
 - 「冒険」を戦闘画面だけで構成するか、戦闘外の探索フィールドを別途用意するかは未定（[fields.md](../fields.md)参照）

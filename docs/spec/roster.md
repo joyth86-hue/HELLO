@@ -1,6 +1,6 @@
 # 仲間・敵キャラクター 基本情報一覧
 
-仲間キャラクター・敵キャラクターそれぞれの「1体につき一意に定まる基本情報」をまとめたもの。**ステータスの成長テーブルなど（HP・攻撃力の数値そのものなど）はここには含めず、別ファイルで正規化して管理する**（仲間キャラの仮ステータスは [lib/characters.ts](../../lib/characters.ts) を参照）。
+仲間キャラクター・敵キャラクターそれぞれの「1体につき一意に定まる基本情報」をまとめたもの。**ステータスの成長テーブルなど（HP・攻撃力の数値そのものなど）はここには含めず、別ファイルで正規化して管理する**（仲間キャラのレベル成長は[lib/character-growth.ts](../../lib/character-growth.ts)、敵の基礎ステータスは[lib/enemy-scaling.ts](../../lib/enemy-scaling.ts)を参照）。
 
 実装（実データ）: [lib/characters-info.ts](../../lib/characters-info.ts)（仲間）、[lib/enemies-info.ts](../../lib/enemies-info.ts)（敵）
 
@@ -28,7 +28,7 @@
 | e05 | 水スラ | 水 | e05_d01.png | e05_d02.png | e05_d03.png |
 | e06 | 草スラ | 草 | e06_d01.png | e06_d02.png | e06_d03.png |
 
-画像パスはすべて `public/enemies/` 配下。詳細は [enemies.md](./enemies.md) 参照。敵にはステータス（HP・攻撃力など）も現状まだ定義していない。
+画像パスはすべて `public/enemies/` 配下。詳細は [enemies.md](./enemies.md) 参照。敵の基礎ステータス（HP・攻撃力・防御力・経験値）は[lib/enemy-scaling.ts](../../lib/enemy-scaling.ts)の`ENEMY_BASE_STATS`で定義済み（ステージ係数・個体差の掛け方は[adventure-system.md](./adventure-system.md)参照）。
 
 ## 属性（現時点で登場しているもの）
 
@@ -44,5 +44,4 @@
 
 ## 今後
 
-- 敵のステータス（HP・攻撃力など）を持たせる場合は、`lib/characters.ts` と同様の別ファイルを敵用に用意する。
-- 属性の相性ルール（炎は草に強い、など）が決まったら、この仕様書内（または新しいファイル）にまとめる。
+- 属性の相性ルール（炎は草に強い、など）が決まったら、この仕様書内（または新しいファイル）にまとめる。現状はダメージ計算式で属性倍率を常に×1.0にしている（[adventure-system.md](./adventure-system.md#ダメージ計算式)参照）。

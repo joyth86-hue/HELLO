@@ -1,6 +1,6 @@
 // アイテムの基本情報（1個に対して一意に定まる情報のみ）。
 // 攻撃力・効果・入手方法・価格などのゲーム的なパラメータはまだ未定。
-// 決まり次第、lib/characters.ts / lib/battle-stages.ts と同様に別ファイルで管理する。
+// 決まり次第、lib/character-growth.ts と同様に別ファイルで管理する。
 //
 // 元データ: サンプル画像フォルダとは別の
 // C:\Users\田中宏樹\Documents\Codex\hirogames_images\assets\items\catalog_v1

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CHARACTERS, getCharacterByIndex } from "@/lib/characters";
-import { getCharacterBaseInfo } from "@/lib/characters-info";
+import { CHARACTER_BASE_INFO, getCharacterBaseInfo } from "@/lib/characters-info";
+import { getCharacterStatsAtLevel } from "@/lib/character-growth";
+import { BASE_CRIT_RATE, CRIT_DAMAGE_MULTIPLIER } from "@/lib/combat";
 import {
   getCharacterEquipment,
   getCharacterLevel,
   getUnlockedCharacterIds,
+  investExpInCharacter,
   loadGame1Data,
   saveGame1Data,
   syncActivePartyWithUnlocks,
@@ -74,10 +76,10 @@ const CHARACTER_BG_COLORS: Record<string, { base: string; glow: string; text: st
   },
 };
 
-// 会心率・会心ダメージの基礎値（docs/spec/adventure-system.mdのダメージ計算式案）。
+// 会心率・会心ダメージの表示用（lib/combat.tsの実際の戦闘計算と同じ値を使う）。
 // アーティファクトの効果値がまだ無いため、装備による上乗せ分は今は反映していない。
-const BASE_CRIT_RATE = 10;
-const BASE_CRIT_DAMAGE = 150;
+const CRIT_RATE_PERCENT = Math.round(BASE_CRIT_RATE * 100);
+const CRIT_DAMAGE_PERCENT = Math.round(CRIT_DAMAGE_MULTIPLIER * 100);
 // 属性相性表が未定のため、属性耐性は仮に0%表示。
 const PLACEHOLDER_ELEMENT_RESISTANCE = 0;
 
@@ -149,6 +151,9 @@ export default function CharacterViewPage() {
   const [saveData, setSaveData] = useState<Game1SaveData | null>(null);
   const [picker, setPicker] = useState<PickerTarget | null>(null);
   const [partyWarning, setPartyWarning] = useState(false);
+  const [showTrainSheet, setShowTrainSheet] = useState(false);
+  const [trainInput, setTrainInput] = useState("");
+  const [trainMessage, setTrainMessage] = useState<string | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const pointerStartX = useRef<number | null>(null);
   const [idleFrame, setIdleFrame] = useState(0);
@@ -172,15 +177,15 @@ export default function CharacterViewPage() {
 
   const effectiveData = saveData ? getEffectiveGame1Data(saveData) : null;
   const unlockedIds = effectiveData ? getUnlockedCharacterIds(effectiveData) : ["c01"];
-  const unlockedCharacters = CHARACTERS.filter((c) => unlockedIds.includes(c.id));
+  const unlockedCharacters = CHARACTER_BASE_INFO.filter((c) => unlockedIds.includes(c.id));
   const safeIndex = mod(index, unlockedCharacters.length);
-  const stats = getCharacterByIndex(CHARACTERS.indexOf(unlockedCharacters[safeIndex]));
   const prevId = unlockedCharacters[mod(safeIndex - 1, unlockedCharacters.length)].id;
   const currentId = unlockedCharacters[safeIndex].id;
   const nextId = unlockedCharacters[mod(safeIndex + 1, unlockedCharacters.length)].id;
   const currentBaseInfo = getCharacterBaseInfo(currentId);
   const isInParty = saveData ? saveData.activePartyIds.includes(currentId) : false;
   const level = saveData ? getCharacterLevel(saveData, currentId) : 1;
+  const stats = getCharacterStatsAtLevel(currentId, level);
 
   const currentEquipment = saveData ? getCharacterEquipment(saveData, currentId) : EMPTY_EQUIPMENT;
   const weaponItem = currentEquipment.weapon ? getItemBaseInfo(currentEquipment.weapon) : undefined;
@@ -223,6 +228,36 @@ export default function CharacterViewPage() {
     const next: Game1SaveData = { ...saveData, activePartyIds: nextActive };
     saveGame1Data(next);
     setSaveData(next);
+  }
+
+  function openTrainSheet() {
+    setTrainInput("");
+    setTrainMessage(null);
+    setShowTrainSheet(true);
+  }
+
+  function submitTrain() {
+    if (!saveData) return;
+    const amount = Math.floor(Number(trainInput));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setTrainMessage("1以上の数値を入力してください");
+      return;
+    }
+    if (amount > saveData.expPoints) {
+      setTrainMessage("経験値ポイントが足りません");
+      return;
+    }
+    const beforeLevel = getCharacterLevel(saveData, currentId);
+    const next = investExpInCharacter(saveData, currentId, amount);
+    saveGame1Data(next);
+    setSaveData(next);
+    const afterLevel = getCharacterLevel(next, currentId);
+    setTrainInput("");
+    setTrainMessage(
+      afterLevel > beforeLevel
+        ? `Lv${beforeLevel} → Lv${afterLevel} になりました`
+        : `${amount}pt投入しました（レベルは変わらず）`
+    );
   }
 
   function updateEquipment(next: CharacterEquipment) {
@@ -390,7 +425,7 @@ export default function CharacterViewPage() {
               </div>
               <div className="flex justify-between">
                 <span>会心率</span>
-                <span className="font-bold tabular-nums">{BASE_CRIT_RATE}%</span>
+                <span className="font-bold tabular-nums">{CRIT_RATE_PERCENT}%</span>
               </div>
               <div className="flex justify-between">
                 <span>攻撃力</span>
@@ -398,7 +433,7 @@ export default function CharacterViewPage() {
               </div>
               <div className="flex justify-between">
                 <span>会心ダメージ</span>
-                <span className="font-bold tabular-nums">{BASE_CRIT_DAMAGE}%</span>
+                <span className="font-bold tabular-nums">{CRIT_DAMAGE_PERCENT}%</span>
               </div>
               <div className="flex justify-between">
                 <span>防御力</span>
@@ -410,6 +445,16 @@ export default function CharacterViewPage() {
               </div>
             </div>
           </div>
+
+          <button
+            onClick={openTrainSheet}
+            className="mt-2 flex w-full items-center justify-between rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2 text-sm text-[#eee9ff] backdrop-blur-sm"
+          >
+            <span className="font-bold">訓練</span>
+            <span className="text-[11px] text-[#b8b3d9]">
+              経験値ポイント {(saveData?.expPoints ?? 0).toLocaleString()}pt
+            </span>
+          </button>
         </div>
       </div>
 
@@ -459,6 +504,48 @@ export default function CharacterViewPage() {
                 ))}
               </div>
             )}
+          </div>
+        </>
+      )}
+
+      {showTrainSheet && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/45"
+            onClick={() => setShowTrainSheet(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-x-0 bottom-0 z-[61] rounded-t-2xl border-t-2 border-black bg-[#fffaf0] p-4 pb-6">
+            <p className="mb-1 font-bold text-black">
+              {currentBaseInfo?.name ?? ""}を訓練（Lv{level}）
+            </p>
+            <p className="mb-3 text-xs text-zinc-500">
+              経験値ポイントを渡してレベルを上げます。所持：{(saveData?.expPoints ?? 0).toLocaleString()}pt
+            </p>
+            <input
+              type="number"
+              min={1}
+              inputMode="numeric"
+              value={trainInput}
+              onChange={(e) => setTrainInput(e.target.value)}
+              placeholder="渡すポイント数"
+              className="w-full rounded-lg border-2 border-zinc-300 px-3 py-2 text-sm text-black outline-none focus:border-black"
+            />
+            {trainMessage && <p className="mt-2 text-xs font-bold text-[#4a3f86]">{trainMessage}</p>}
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setShowTrainSheet(false)}
+                className="flex-1 rounded-full border-2 border-zinc-300 py-2 text-sm font-bold text-zinc-600"
+              >
+                閉じる
+              </button>
+              <button
+                onClick={submitTrain}
+                className="flex-1 rounded-full border-2 border-black bg-[#c9c3ff] py-2 text-sm font-bold text-black"
+              >
+                決定
+              </button>
+            </div>
           </div>
         </>
       )}

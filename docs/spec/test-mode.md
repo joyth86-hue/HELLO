@@ -18,7 +18,7 @@
 
 ## 実データは書き換えない
 
-`getEffectiveGame1Data()`は**読み取り専用のヘルパー**で、渡された`Game1SaveData`を書き換えずに「全解放済みの見た目のコピー」を新しく作って返すだけ。実際のセーブデータ（`maxClearedStage`・`inventory`・`activePartyIds`・`characterLevels`など）はテストモードのON/OFFによって一切変更されない。書き込み処理（パーティ編成、装備、コード入力自体）は必ず元の（実際の）`Game1SaveData`に対して行うこと——`getEffectiveGame1Data()`の戻り値に対して`saveGame1Data()`を呼んではいけない。
+`getEffectiveGame1Data()`は**読み取り専用のヘルパー**で、渡された`Game1SaveData`を書き換えずに「全解放済みの見た目のコピー」を新しく作って返すだけ。実際のセーブデータ（`maxClearedStage`・`inventory`・`activePartyIds`・`characterInvestedExp`など）はテストモードのON/OFFによって一切変更されない。書き込み処理（パーティ編成、装備、コード入力自体）は必ず元の（実際の）`Game1SaveData`に対して行うこと——`getEffectiveGame1Data()`の戻り値に対して`saveGame1Data()`を呼んではいけない。
 
 このため、テストモードをOFFに戻すと、通常プレイの進行状況（クリア済みステージ・所持アイテム・経験値など）はそのまま元通り表示される。
 

@@ -55,8 +55,8 @@ interface Game1SaveData {
   equipment: Record<string, CharacterEquipment>; // キャラID → 装備（キャラクター確認画面で使用）
   maxClearedStage: number; // クリア済みの最大ステージ番号（0=未クリア）
   activePartyIds: string[]; // バトルに参加させるキャラID（最大3人）
-  expPoints: number; // 未振り分けの経験値ポイント（キャラクター育成用、未実装）
-  characterLevels: Record<string, number>; // キャラID → レベル（キー無し＝レベル1）
+  expPoints: number; // 未振り分けの経験値ポイント（キャラクター育成用、「訓練」ボタンで消費）
+  characterInvestedExp: Record<string, number>; // キャラID → これまでに投入した経験値ポイントの累計（キー無し＝0＝レベル1）。レベルはここから逆算する
   testMode: boolean; // テストモード（全ステージ・全アイテム解放）。詳細はtest-mode.md参照
 }
 ```
@@ -66,6 +66,8 @@ interface Game1SaveData {
 `equipment`はキーにキャラクターIDが無い（＝一度も装備操作をしていない）場合、装備なし（`{ weapon: null, artifacts: [null, null, null] }`）として扱う（`getCharacterEquipment()`ヘルパー）。詳細は[character-view.md](./screens/character-view.md)参照。
 
 `maxClearedStage` / `activePartyIds`は[冒険システム設計](./adventure-system.md)で使う。キャラクターの仲間解放は`maxClearedStage`から`isCharacterUnlocked()`で判定し、新しく解放されたキャラクターは編成が3人未満なら`syncActivePartyWithUnlocks()`で自動的に`activePartyIds`へ追加する。
+
+`characterInvestedExp`は累計値のみを保存し、レベルは都度[lib/character-growth.ts](../../lib/character-growth.ts)の`levelFromInvestedExp()`で逆算する（`getCharacterLevel()`経由）。詳細は[adventure-system.md](./adventure-system.md#経験値とレベル成長)参照。
 
 ## 命名の補足
 

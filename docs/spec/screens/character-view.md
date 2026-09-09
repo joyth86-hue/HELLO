@@ -1,6 +1,6 @@
 # キャラクター確認画面（`/games/game1/character`）
 
-実装: [app/games/game1/(main)/character/page.tsx](<../../../app/games/game1/(main)/character/page.tsx>)、キャラクターデータ: [lib/characters.ts](../../../lib/characters.ts) / [lib/characters-info.ts](../../../lib/characters-info.ts)、装備データ: [lib/game1-data.ts](../../../lib/game1-data.ts)
+実装: [app/games/game1/(main)/character/page.tsx](<../../../app/games/game1/(main)/character/page.tsx>)、キャラクターデータ: [lib/character-growth.ts](../../../lib/character-growth.ts)（レベル成長）/ [lib/characters-info.ts](../../../lib/characters-info.ts)（名前・属性など）、装備データ: [lib/game1-data.ts](../../../lib/game1-data.ts)
 
 ## 概要
 
@@ -19,15 +19,16 @@
 3. **装備スロット**
    - 4枠を横並びで表示。**一番左が武器スロット、残り3枠がアーティファクトスロット**（[items.md](../items.md)参照）
    - 空欄は「＋」表示の点線枠。装備しているスロットはアイテムアイコンを表示する
-4. **ステータス表示（最下部、下部ナビゲーションバーの直前）**
-   - 上段に「レベル」（`characterLevels`、未設定は1として扱う）を単独表示し、その下を2段組み（`grid-cols-2`）で HP／会心率、攻撃力／会心ダメージ、防御力／属性耐性 の3行を並べる
-     - HP・攻撃力・防御力は[lib/characters.ts](../../../lib/characters.ts)の`CHARACTERS`から取得（現時点では全て仮の値）
-     - 会心率（10%固定）・会心ダメージ（150%固定）・属性耐性（0%固定）は現状すべて装備なしの基礎値のプレースホルダー（アーティファクトなどによる加算は未実装）
+4. **ステータス表示＋「訓練」ボタン（最下部、下部ナビゲーションバーの直前）**
+   - 上段に「レベル」を単独表示し、その下を2段組み（`grid-cols-2`）で HP／会心率、攻撃力／会心ダメージ、防御力／属性耐性 の3行を並べる
+     - レベルは`getCharacterLevel()`（投入済み経験値ポイントの累計から逆算、[lib/game1-data.ts](../../../lib/game1-data.ts)）、HP・攻撃力・防御力はそのレベルでの実際の値（[lib/character-growth.ts](../../../lib/character-growth.ts)の`getCharacterStatsAtLevel()`、[戦闘](./battle-test.md)でも同じ関数を使う）
+     - 会心率（10%固定）・会心ダメージ（150%固定、[lib/combat.ts](../../../lib/combat.ts)と同じ値）・属性耐性（0%固定）は現状すべて装備なしの基礎値のプレースホルダー（アーティファクトなどによる加算は未実装）
+   - ステータスカードの下に「訓練」ボタン。未振り分けの経験値ポイント（`Game1SaveData.expPoints`）の残量を表示し、タップするとボトムシートが開く。渡すポイント数を入力して「決定」すると、そのキャラクターの累計投入経験値（`characterInvestedExp`）に加算され、必要に応じてレベルが上がる（[lib/game1-data.ts](../../../lib/game1-data.ts)の`investExpInCharacter()`）。渡した量が保有ポイントを超える場合や0以下の場合はエラーメッセージを表示するだけで何も起きない
    - 下部ナビゲーションバーと重ならないよう、下側に余白を空けている
 
 ## 表示対象は「仲間になっているキャラクター」だけ
 
-[冒険システム設計](../adventure-system.md#キャラクターの仲間解放)の通り、キャラクターはステージクリアで順次仲間になる（`maxClearedStage`で判定）。この画面のスワイプ対象は**まだ仲間になっていないキャラクターを含まない**（`lib/characters.ts`の`CHARACTERS`全4体のうち、解放済みのものだけに絞り込む）。序盤はアカネ1人だけの状態になる。
+[冒険システム設計](../adventure-system.md#キャラクターの仲間解放)の通り、キャラクターはステージクリアで順次仲間になる（`maxClearedStage`で判定）。この画面のスワイプ対象は**まだ仲間になっていないキャラクターを含まない**（[characters-info.ts](../../../lib/characters-info.ts)の`CHARACTER_BASE_INFO`全4体のうち、解放済みのものだけに絞り込む）。序盤はアカネ1人だけの状態になる。[テストモード](../test-mode.md)中は全員解放済み扱いになる。
 
 ## 編成（バトルに参加）
 
@@ -61,9 +62,9 @@
 
 ## 今後
 
-- **【暫定】現在、`app/games/game1/(main)/character/page.tsx`の`DEBUG_SHOW_ALL_CHARACTERS`が`true`になっており、実際の解放状況（`maxClearedStage`）に関係なく4人全員が表示される。**キャラごとの背景色（下記）の見た目を確認するためのテスト用の一時対応。本来の「ステージクリアで順次解放」の挙動を確認したくなったら`false`に戻すこと
 - ステータスの値は全キャラクター仮の数値。正式な数値・バランス調整は別途行う
 - 会心率・会心ダメージ・属性耐性は現状すべて固定のプレースホルダー値。装備・キャラクター個性による変動は未実装
+- 「訓練」ボタンの名称は仮。レベルアップに必要な経験値ポイントのカーブも仮の数値（[adventure-system.md](../adventure-system.md#経験値とレベル成長)参照）
 - 装備によるステータスへの加算（攻撃力アップなど）は未実装。今は「はめ込まれる」見た目だけで、ステータス表示には反映されない
 - スキルは「一旦邪魔なので消してほしい」との指示で今回のボタンごと削除した。中身は別途検討する
 - 同じアイテムを複数キャラクターへ同時装備できてしまう点、装備すると所持数からアイテムを引くべきか（引かない仕様で現状は実装）などは、今後のバランス設計とあわせて決める
