@@ -88,21 +88,27 @@ body {
   }
 }
 
-@keyframes bg-drift {
+/* GameBackgroundの「hiro games」文字レイヤーはmask-imageで塗り分けている
+   ため、background-positionではなくmask-positionを動かして流している
+   （background-imageを使うレイヤーではないので、background-positionの
+   アニメーションでは何も動かない）。 */
+@keyframes mask-drift {
   from {
-    background-position: 0 0;
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
   }
   to {
-    background-position: -210px -85px;
+    -webkit-mask-position: -210px -85px;
+    mask-position: -210px -85px;
   }
 }
 
-.animate-bg-drift {
-  animation: bg-drift 7s linear infinite;
+.animate-mask-drift {
+  animation: mask-drift 7s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-bg-drift {
+  .animate-mask-drift {
     animation: none;
   }
 }

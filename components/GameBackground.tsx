@@ -31,7 +31,7 @@ export default function GameBackground({
         }}
       />
       <div
-        className="absolute inset-0 animate-bg-drift transition-[background-color] duration-500"
+        className="absolute inset-0 animate-mask-drift transition-[background-color] duration-500"
         style={{
           backgroundColor: textColor,
           WebkitMaskImage: "url(/backgrounds/pattern-hiro-games.svg)",
