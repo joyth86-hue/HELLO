@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getCharacterBaseInfo } from "@/lib/characters-info";
 import { getEnemyBaseInfo } from "@/lib/enemies-info";
 import { loadGame1Data, saveGame1Data } from "@/lib/game1-data";
+import { getCharacterSkillKit } from "@/lib/skills-info";
 
 // テスト用の戦闘画面。まだ実際のパーティ編成・敵の出現テーブルとは
 // 繋がっておらず、以下の仮データ・仮ステータスで通常攻撃だけを
@@ -317,25 +318,43 @@ export default function BattleTestPage() {
         </div>
       )}
 
-      {awaitingPlayer && !result && (
-        <div className="absolute inset-x-0 bottom-0 z-20 flex items-end justify-around border-t border-[rgba(201,195,255,0.25)] bg-black/85 px-1 pb-4 pt-4">
-          <button
-            onClick={handleNormalAttack}
-            className="flex flex-1 flex-col items-center gap-1"
-          >
-            <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#c9c3ff] bg-[#2c2557] text-xs font-bold text-white">
-              通常攻撃
-            </div>
-          </button>
-          {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="flex flex-1 flex-col items-center gap-1 opacity-40">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/30 bg-white/5 text-xs font-bold text-white">
-                スキル{n}
+      {awaitingPlayer && !result && (() => {
+        const activeUnit = units.find((u) => u.key === activeKey);
+        const baseInfo = activeUnit ? getCharacterBaseInfo(activeUnit.id) : undefined;
+        // スキルは将来的に「初期は通常攻撃＋スキル1つのみ解放、以降はスキル
+        // ポイントで順次解放・育成」という設計にする予定（docs/spec/skills.md
+        // 参照）。解放状況を持つセーブデータがまだ無いため、動作確認として
+        // 一旦キットの4枠を全て表示している（ここが将来、解放済み分だけに
+        // 絞り込む・未解放は鍵アイコン表示にする、などの分岐ポイントになる）。
+        const skillKit = activeUnit ? getCharacterSkillKit(activeUnit.id) : [];
+        return (
+          <div className="absolute inset-x-0 bottom-0 z-20 flex items-end justify-around border-t border-[rgba(201,195,255,0.25)] bg-black/85 px-1 pb-4 pt-4">
+            <button
+              onClick={handleNormalAttack}
+              className="flex flex-1 flex-col items-center gap-1"
+            >
+              {baseInfo && (
+                <img
+                  src={baseInfo.assets.normalAttackIcon}
+                  alt="通常攻撃"
+                  className="h-14 w-14 rounded-xl object-contain"
+                  draggable={false}
+                />
+              )}
+            </button>
+            {skillKit.map((skill) => (
+              <div key={skill.id} className="flex flex-1 flex-col items-center gap-1 opacity-40">
+                <img
+                  src={skill.icon}
+                  alt={skill.name}
+                  className="h-14 w-14 rounded-xl object-contain"
+                  draggable={false}
+                />
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
