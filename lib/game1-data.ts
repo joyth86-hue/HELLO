@@ -49,6 +49,29 @@ export function getCharacterEquipment(
   return data.equipment[characterId] ?? EMPTY_EQUIPMENT;
 }
 
+// 装備スロット1つを指す参照（武器スロットは"weapon"、アーティファクトスロットは0-2）。
+export type EquipmentSlotRef = { characterId: string; slot: "weapon" | 0 | 1 | 2 };
+
+// 指定したアイテムIDが、キャラクター全員の装備欄に合計何個使われているかを数える
+// （同じ個体を複数箇所に付けられないよう、所持数と比較するために使う）。
+// excludeで指定したスロットは集計から除外する（そのスロット自身の現在の中身を
+// 「空き」として扱い、同じアイテムを選び直せるようにするため）。
+export function countEquippedInstances(
+  equipment: EquipmentState,
+  itemId: string,
+  exclude?: EquipmentSlotRef
+): number {
+  let count = 0;
+  for (const [characterId, eq] of Object.entries(equipment)) {
+    const isExcludedChar = exclude?.characterId === characterId;
+    if (eq.weapon === itemId && !(isExcludedChar && exclude!.slot === "weapon")) count++;
+    eq.artifacts.forEach((id, i) => {
+      if (id === itemId && !(isExcludedChar && exclude!.slot === i)) count++;
+    });
+  }
+  return count;
+}
+
 export const MAX_PARTY_SIZE = 3;
 
 // キャラクターが仲間になるステージ（そのステージ番号をクリアした時点で解放）。

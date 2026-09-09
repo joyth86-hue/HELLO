@@ -23,6 +23,8 @@ export function getEffectiveGame1Data(data: Game1SaveData): Game1SaveData {
   return {
     ...data,
     maxClearedStage: TEST_MODE_MAX_STAGE,
-    inventory: ITEM_BASE_INFO.map((item) => ({ itemId: item.id, quantity: 1 })),
+    // 装備は所持数までしか付けられない仕様（lib/game1-data.tsのcountEquippedInstances）
+    // のため、テストモードでは全員に自由に試着できるよう数量を多めに用意しておく。
+    inventory: ITEM_BASE_INFO.map((item) => ({ itemId: item.id, quantity: 99 })),
   };
 }

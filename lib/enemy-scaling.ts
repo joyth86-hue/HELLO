@@ -19,8 +19,20 @@ export const ENEMY_BASE_STATS: Record<string, EnemyBaseStats> = {
   e06: { hp: 65, atk: 10, def: 5, exp: 7 }, // 草スラ
 };
 
-// ステージ係数：1 + (S-1) × 0.06（線形、ステージ100で約7倍）。
+// ステージ係数（HP/攻撃力/防御力用）：複利カーブ 1.03^(S-1)（ステージ100で約19倍）。
+// 武器合成やスキルなど「戦闘を楽にする」追加要素をまだ実装していない前提で、
+// 現時点ではステージを進めるのがしっかり大変になるよう、線形よりだいぶ強めに
+// 設定している（ユーザー確認済みの仮数値。今後の追加要素の実装状況を見ながら
+// 調整する想定）。
 export function stageCoefficient(stage: number): number {
+  return Math.pow(1.03, stage - 1);
+}
+
+// 経験値係数：1 + (S-1) × 0.06（線形、ステージ100で約7倍）。あえてstageCoefficient
+// とは別の緩やかな伸びにしている。同じ係数にすると「敵が強くなるほど経験値も同じ
+// 倍率で増える」ため、キャラのレベルが敵の強さに常に追いつき続けてしまい、
+// 上記の強化がステージ進行の歯ごたえに繋がらない（詳細はdocs/spec/adventure-system.md参照）。
+export function expCoefficient(stage: number): number {
   return 1 + (stage - 1) * 0.06;
 }
 
@@ -46,6 +58,7 @@ export function getScaledEnemyStats(enemyId: string, stage: number, isBoss: bool
   const base = ENEMY_BASE_STATS[enemyId];
   if (!base) return { hp: 1, atk: 1, def: 0, exp: 0 };
   const coef = stageCoefficient(stage);
+  const eCoef = expCoefficient(stage);
   const variance = rollIndividualVariance();
   const statMul = (isBoss ? BOSS_STAT_MULTIPLIER : 1) * variance;
   const expMul = isBoss ? BOSS_EXP_MULTIPLIER : 1;
@@ -53,7 +66,7 @@ export function getScaledEnemyStats(enemyId: string, stage: number, isBoss: bool
     hp: Math.max(1, Math.round(base.hp * coef * statMul)),
     atk: Math.max(1, Math.round(base.atk * coef * statMul)),
     def: Math.max(0, Math.round(base.def * coef * statMul)),
-    exp: Math.max(1, Math.round(base.exp * coef * expMul)),
+    exp: Math.max(1, Math.round(base.exp * eCoef * expMul)),
   };
 }
 

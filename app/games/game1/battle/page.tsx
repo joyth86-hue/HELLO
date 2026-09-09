@@ -262,6 +262,33 @@ export default function BattlePage() {
     }
   }
 
+  // 稼いだ経験値・ドロップ品を実際のセーブデータへ反映し、クリア画面用の表示状態を整える。
+  // 全滅時も「そこまでに倒した敵の分」は持ち帰れる（maxClearedStageだけは更新しない）。
+  function commitRewards(totalExp: number, droppedItems: DroppedItem[], stage: number, cleared: boolean) {
+    const data = loadGame1Data();
+    let next: Game1SaveData = {
+      ...data,
+      expPoints: data.expPoints + totalExp,
+      ...(cleared ? { maxClearedStage: Math.max(data.maxClearedStage, stage) } : {}),
+    };
+    next = addItemsToInventory(next, droppedItems.map((d) => d.itemId));
+    saveGame1Data(next);
+    setExpEarned(totalExp);
+
+    const summaryCounts = new Map<string, number>();
+    for (const d of droppedItems) {
+      summaryCounts.set(d.itemId, (summaryCounts.get(d.itemId) ?? 0) + 1);
+    }
+    setDroppedItemSummary(
+      Array.from(summaryCounts.entries())
+        .map(([itemId, quantity]) => {
+          const item = getItemBaseInfo(itemId);
+          return item ? { item, quantity } : null;
+        })
+        .filter((entry): entry is { item: ItemBaseInfo; quantity: number } => entry !== null)
+    );
+  }
+
   // ステージ全体（S-1〜S-10）を通しで進める。
   async function playStage(stage: number, saveData: Game1SaveData) {
     try {
@@ -278,8 +305,12 @@ export default function BattlePage() {
 
         const outcome = await runBattleLoop();
         if (outcome === "defeat") {
-          // 全滅した場合は経験値・アイテムいずれも加算しない（クリアボーナス扱いのため）。
-          setExpEarned(0);
+          // 全滅：このバトルで力尽きるまでに倒した分の経験値は持ち帰れる
+          // （maxClearedStageは更新しない＝ステージ自体は未クリアのまま）。
+          const partialExp = unitsRef.current
+            .filter((u) => u.side === "enemy" && !u.alive)
+            .reduce((sum, u) => sum + u.exp, 0);
+          commitRewards(totalExp + partialExp, droppedItems, stage, false);
           setResult("defeat");
           return;
         }
@@ -296,28 +327,7 @@ export default function BattlePage() {
       }
 
       // S-10（ボス）を撃破：ステージクリア
-      const data = loadGame1Data();
-      let next: Game1SaveData = {
-        ...data,
-        maxClearedStage: Math.max(data.maxClearedStage, stage),
-        expPoints: data.expPoints + totalExp,
-      };
-      next = addItemsToInventory(next, droppedItems.map((d) => d.itemId));
-      saveGame1Data(next);
-      setExpEarned(totalExp);
-
-      const summaryCounts = new Map<string, number>();
-      for (const d of droppedItems) {
-        summaryCounts.set(d.itemId, (summaryCounts.get(d.itemId) ?? 0) + 1);
-      }
-      setDroppedItemSummary(
-        Array.from(summaryCounts.entries())
-          .map(([itemId, quantity]) => {
-            const item = getItemBaseInfo(itemId);
-            return item ? { item, quantity } : null;
-          })
-          .filter((entry): entry is { item: ItemBaseInfo; quantity: number } => entry !== null)
-      );
+      commitRewards(totalExp, droppedItems, stage, true);
       setResult("clear");
     } catch (err) {
       // 想定外のエラーで進行不能になった場合に、無言のまま固まるのを避ける保険。
@@ -347,13 +357,13 @@ export default function BattlePage() {
 
   useEffect(() => {
     if (!result) return;
-    // ドロップアイテムがある場合は読む時間を少し長めに取る。
-    const delay = result === "clear" && droppedItemSummary.length > 0 ? 3000 : 1800;
+    // 獲得報酬（経験値・ドロップ）がある場合は読む時間を少し長めに取る。
+    const delay = expEarned > 0 || droppedItemSummary.length > 0 ? 3000 : 1800;
     const t = window.setTimeout(() => {
       router.push("/games/game1/home");
     }, delay);
     return () => window.clearTimeout(t);
-  }, [result, router, droppedItemSummary]);
+  }, [result, router, expEarned, droppedItemSummary]);
 
   function handleNormalAttack() {
     resolvePlayerActionRef.current?.();
@@ -433,7 +443,7 @@ export default function BattlePage() {
           <p className="text-3xl font-extrabold text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.8)]">
             {result === "clear" ? "ステージクリア！" : "敗北…"}
           </p>
-          {result === "clear" && (
+          {(expEarned > 0 || droppedItemSummary.length > 0) && (
             <>
               <p className="text-sm font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
                 獲得経験値：{expEarned}pt

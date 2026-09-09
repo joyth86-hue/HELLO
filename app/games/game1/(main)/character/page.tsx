@@ -6,6 +6,7 @@ import { getCharacterStatsAtLevel } from "@/lib/character-growth";
 import { BASE_CRIT_RATE, CRIT_DAMAGE_MULTIPLIER } from "@/lib/combat";
 import { calculateEquipmentBonus, applyEquipmentBonusToStats } from "@/lib/item-effects";
 import {
+  countEquippedInstances,
   getCharacterEquipment,
   getCharacterLevel,
   getUnlockedCharacterIds,
@@ -209,17 +210,26 @@ export default function CharacterViewPage() {
   }, [effectiveData]);
 
   const candidates = useMemo(() => {
-    if (!picker) return [];
+    if (!picker || !saveData) return [];
+    const slotRef = { characterId: currentId, slot: picker.kind === "weapon" ? ("weapon" as const) : picker.index };
+    const hasSpareCopy = (itemId: string, quantity: number) =>
+      quantity - countEquippedInstances(saveData.equipment, itemId, slotRef) > 0;
+
     if (picker.kind === "weapon") {
-      return owned.filter((o) => o.item.type === currentBaseInfo?.weaponType);
+      return owned.filter(
+        (o) => o.item.type === currentBaseInfo?.weaponType && hasSpareCopy(o.item.id, o.quantity)
+      );
     }
     const equippedElsewhere = new Set(
       currentEquipment.artifacts.filter((id, i) => id !== null && i !== picker.index)
     );
     return owned.filter(
-      (o) => o.item.type === "アーティファクト" && !equippedElsewhere.has(o.item.id)
+      (o) =>
+        o.item.type === "アーティファクト" &&
+        !equippedElsewhere.has(o.item.id) &&
+        hasSpareCopy(o.item.id, o.quantity)
     );
-  }, [picker, owned, currentBaseInfo, currentEquipment]);
+  }, [picker, owned, currentBaseInfo, currentEquipment, saveData, currentId]);
 
   function toggleParty() {
     if (!saveData) return;
