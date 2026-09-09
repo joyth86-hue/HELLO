@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { loadGame1Data, type Game1SaveData } from "@/lib/game1-data";
+import { getEffectiveGame1Data } from "@/lib/test-mode";
 import GameBackground from "@/components/GameBackground";
+import TestModeBadge from "@/components/TestModeBadge";
 
 // 選べるステージ：クリア済みの全ステージ＋未クリアの最新1ステージのみ。
 // 詳細はdocs/spec/screens/adventure.md参照。まだシンプルな一覧のみで、
@@ -16,13 +18,18 @@ export default function StageSelectPage() {
     setSaveData(loadGame1Data());
   }, []);
 
-  const maxClearedStage = saveData?.maxClearedStage ?? 0;
+  const effectiveData = saveData ? getEffectiveGame1Data(saveData) : null;
+  const maxClearedStage = effectiveData?.maxClearedStage ?? 0;
   const selectableUpTo = maxClearedStage + 1;
   const stages = Array.from({ length: selectableUpTo }, (_, i) => i + 1);
 
   return (
     <div className="relative h-[100dvh] overflow-hidden bg-background">
       <GameBackground />
+
+      {saveData?.testMode && (
+        <TestModeBadge className="absolute right-4 top-[calc(1rem_+_env(safe-area-inset-top))]" />
+      )}
 
       <div className="relative z-10 flex h-full flex-col">
         <div className="px-4 pb-2 pt-[calc(1rem_+_env(safe-area-inset-top))]">

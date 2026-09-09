@@ -10,13 +10,14 @@ import {
   loadGame1Data,
   saveGame1Data,
   syncActivePartyWithUnlocks,
-  CHARACTER_UNLOCK_ORDER,
   MAX_PARTY_SIZE,
   type CharacterEquipment,
   type Game1SaveData,
 } from "@/lib/game1-data";
+import { getEffectiveGame1Data } from "@/lib/test-mode";
 import { getItemBaseInfo, type ItemBaseInfo } from "@/lib/items-info";
 import GameBackground from "@/components/GameBackground";
+import TestModeBadge from "@/components/TestModeBadge";
 
 const SWIPE_THRESHOLD = 60;
 const SNAP_DURATION = 250;
@@ -72,10 +73,6 @@ const CHARACTER_BG_COLORS: Record<string, { base: string; glow: string; text: st
     text: "#8ce9e0",
   },
 };
-
-// 仲間の解放状況にかかわらず、テスト用に4人全員を表示するための一時フラグ。
-// 本来の仕様（ステージクリアで順次解放）を確認したくなったらfalseに戻す。
-const DEBUG_SHOW_ALL_CHARACTERS = true;
 
 // 会心率・会心ダメージの基礎値（docs/spec/adventure-system.mdのダメージ計算式案）。
 // アーティファクトの効果値がまだ無いため、装備による上乗せ分は今は反映していない。
@@ -173,11 +170,8 @@ export default function CharacterViewPage() {
     setPicker(null);
   }, [index]);
 
-  const unlockedIds = DEBUG_SHOW_ALL_CHARACTERS
-    ? CHARACTER_UNLOCK_ORDER
-    : saveData
-      ? getUnlockedCharacterIds(saveData)
-      : ["c01"];
+  const effectiveData = saveData ? getEffectiveGame1Data(saveData) : null;
+  const unlockedIds = effectiveData ? getUnlockedCharacterIds(effectiveData) : ["c01"];
   const unlockedCharacters = CHARACTERS.filter((c) => unlockedIds.includes(c.id));
   const safeIndex = mod(index, unlockedCharacters.length);
   const stats = getCharacterByIndex(CHARACTERS.indexOf(unlockedCharacters[safeIndex]));
@@ -193,14 +187,14 @@ export default function CharacterViewPage() {
   const artifactItems = currentEquipment.artifacts.map((id) => (id ? getItemBaseInfo(id) : undefined));
 
   const owned = useMemo(() => {
-    if (!saveData) return [];
-    return saveData.inventory
+    if (!effectiveData) return [];
+    return effectiveData.inventory
       .map((entry) => {
         const item = getItemBaseInfo(entry.itemId);
         return item ? { item, quantity: entry.quantity } : null;
       })
       .filter((entry): entry is { item: ItemBaseInfo; quantity: number } => entry !== null);
-  }, [saveData]);
+  }, [effectiveData]);
 
   const candidates = useMemo(() => {
     if (!picker) return [];
@@ -322,6 +316,9 @@ export default function CharacterViewPage() {
 
       <div className="relative z-10 flex h-full touch-none flex-col">
         <div className="relative flex flex-shrink-0 items-center justify-center bg-black px-16 pb-3.5 pt-[calc(0.875rem_+_env(safe-area-inset-top))]">
+          {saveData?.testMode && (
+            <TestModeBadge className="absolute left-3 top-1/2 -translate-y-1/2" />
+          )}
           <p className="text-xl font-bold tracking-wide text-white">{currentBaseInfo?.name ?? ""}</p>
           <button
             onClick={toggleParty}

@@ -55,6 +55,9 @@ interface Game1SaveData {
   equipment: Record<string, CharacterEquipment>; // キャラID → 装備（キャラクター確認画面で使用）
   maxClearedStage: number; // クリア済みの最大ステージ番号（0=未クリア）
   activePartyIds: string[]; // バトルに参加させるキャラID（最大3人）
+  expPoints: number; // 未振り分けの経験値ポイント（キャラクター育成用、未実装）
+  characterLevels: Record<string, number>; // キャラID → レベル（キー無し＝レベル1）
+  testMode: boolean; // テストモード（全ステージ・全アイテム解放）。詳細はtest-mode.md参照
 }
 ```
 

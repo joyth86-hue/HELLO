@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { loadGame1Data } from "@/lib/game1-data";
+import { loadGame1Data, type Game1SaveData } from "@/lib/game1-data";
+import { getEffectiveGame1Data } from "@/lib/test-mode";
 import { getItemBaseInfo, type ItemBaseInfo, type ItemType } from "@/lib/items-info";
 import GameBackground from "@/components/GameBackground";
+import TestModeBadge from "@/components/TestModeBadge";
 
 interface OwnedItem {
   item: ItemBaseInfo;
@@ -23,20 +25,24 @@ const RARITY_COLOR: Record<string, string> = {
 };
 
 export default function BagPage() {
-  const [owned, setOwned] = useState<OwnedItem[]>([]);
+  const [saveData, setSaveData] = useState<Game1SaveData | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("すべて");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const data = loadGame1Data();
-    const list = data.inventory
+    setSaveData(loadGame1Data());
+  }, []);
+
+  const owned = useMemo(() => {
+    if (!saveData) return [];
+    const effectiveData = getEffectiveGame1Data(saveData);
+    return effectiveData.inventory
       .map((entry) => {
         const item = getItemBaseInfo(entry.itemId);
         return item ? { item, quantity: entry.quantity } : null;
       })
       .filter((entry): entry is OwnedItem => entry !== null);
-    setOwned(list);
-  }, []);
+  }, [saveData]);
 
   const counts = useMemo(() => {
     const map = {} as Record<TabKey, number>;
@@ -52,6 +58,10 @@ export default function BagPage() {
   return (
     <div className="relative h-[100dvh] overflow-hidden bg-background">
       <GameBackground />
+
+      {saveData?.testMode && (
+        <TestModeBadge className="absolute right-4 top-[calc(1rem_+_env(safe-area-inset-top))]" />
+      )}
 
       <div className="relative z-10 flex h-full flex-col">
         <div className="px-4 pb-2 pt-[calc(1rem_+_env(safe-area-inset-top))]">

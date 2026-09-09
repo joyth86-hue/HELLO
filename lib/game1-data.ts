@@ -30,6 +30,8 @@ export interface Game1SaveData {
   expPoints: number;
   // キャラID → レベル。キー自体が無いキャラは未設定＝レベル1として扱う。
   characterLevels: Record<string, number>;
+  // テストプレイ用の全解放モード。詳細はlib/test-mode.ts参照。
+  testMode: boolean;
 }
 
 export const GAME1_ID = "game1";
@@ -110,6 +112,7 @@ export const defaultGame1Data: Game1SaveData = {
   activePartyIds: ["c01"],
   expPoints: 0,
   characterLevels: {},
+  testMode: false,
 };
 
 export function loadGame1Data(): Game1SaveData {
