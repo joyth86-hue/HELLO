@@ -15,7 +15,7 @@
 ## パーティ・敵の生成
 
 - **仲間**：`Game1SaveData.activePartyIds`（実際の編成、1〜3人）をそのまま使う。各キャラのHP/攻撃力/防御力は、そのキャラの現在レベル（[character-growth.ts](../../../lib/character-growth.ts)の`getCharacterStatsAtLevel`）に、装備中のアイテムによる加算（[item-effects.ts](../../../lib/item-effects.ts)の`calculateEquipmentBonus`/`applyEquipmentBonusToStats`）を乗せて算出する。会心率・会心ダメージの装備加算も同様に、通常攻撃のダメージ計算に反映される
-- **敵**：ステージ番号から出現パターン（4色ローテーション、[enemy-scaling.ts](../../../lib/enemy-scaling.ts)の`pickRandomEnemyFromPattern`）を決め、そこからランダムに選ぶ。`S-1`〜`S-9`は3体、`S-10`（ボス）は1体（中央スロットに配置）。ステータス（HP/攻撃力/防御力）は「基礎値 × ステージ係数（`stageCoefficient`、複利カーブ）× 個体差（±10%、バトルごとに再抽選）」、経験値だけは別の緩やかな係数（`expCoefficient`、線形）を使う。ボスだけ追加でステータス×1.6・経験値×3
+- **敵**：ステージ番号から出現パターン（4色ローテーション、[enemy-scaling.ts](../../../lib/enemy-scaling.ts)の`pickRandomEnemyFromPattern`）を決め、そこからランダムに選ぶ。`S-1`〜`S-9`は3体、`S-10`（ボス）は1体（中央スロットに配置）。ステータス（HP/攻撃力/防御力）は「基礎値 × ステージ係数（`stageCoefficient`、2次関数カーブ）× 個体差（±10%、バトルごとに再抽選）」、経験値だけは別の緩やかな係数（`expCoefficient`、線形）を使う。ボスだけ追加でステータス×1.6・経験値×3
 - **背景**：ステージ番号から`getFieldImagePathForStage()`で1ステージ＝1背景を固定で割り当てる（`f01`〜`f10`を10刻みで繰り返し）
 
 ## 10バトル連戦の進行

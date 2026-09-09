@@ -19,13 +19,19 @@ export const ENEMY_BASE_STATS: Record<string, EnemyBaseStats> = {
   e06: { hp: 65, atk: 10, def: 5, exp: 7 }, // 草スラ
 };
 
-// ステージ係数（HP/攻撃力/防御力用）：複利カーブ 1.03^(S-1)（ステージ100で約19倍）。
-// 武器合成やスキルなど「戦闘を楽にする」追加要素をまだ実装していない前提で、
-// 現時点ではステージを進めるのがしっかり大変になるよう、線形よりだいぶ強めに
-// 設定している（ユーザー確認済みの仮数値。今後の追加要素の実装状況を見ながら
-// 調整する想定）。
+// ステージ係数（HP/攻撃力/防御力用）：2次関数カーブ 1 + a×(S-1) + b×(S-1)²
+// （a=0.02, b=0.001736、ステージ100で約20倍）。
+// 複利（指数）カーブだと終盤だけ急激に跳ね上がり、レベル上限（100）に当たった
+// 瞬間に詰みかける「崖」ができてしまっていたため、2次関数に変更した。2次関数は
+// 「10ステージあたりの必要挑戦回数の伸び幅」自体がなだらかに直線的に増えていく
+// 性質があり、崖ではなく徐々にきつくなる曲線になる（ユーザー確認済みの仮数値）。
+// 武器合成やスキルなど「戦闘を楽にする」追加要素がまだ無い前提で強めに設定して
+// いるため、それらを実装した段階で改めて数値を調整する想定。
+const STAGE_COEFFICIENT_LINEAR = 0.02;
+const STAGE_COEFFICIENT_QUADRATIC = 0.001736;
 export function stageCoefficient(stage: number): number {
-  return Math.pow(1.03, stage - 1);
+  const s = stage - 1;
+  return 1 + STAGE_COEFFICIENT_LINEAR * s + STAGE_COEFFICIENT_QUADRATIC * s * s;
 }
 
 // 経験値係数：1 + (S-1) × 0.06（線形、ステージ100で約7倍）。あえてstageCoefficient
