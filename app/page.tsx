@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { markEnteredViaSplash } from "@/lib/entry-guard";
 
 export default function AppStartPage() {
   const router = useRouter();
@@ -9,7 +10,10 @@ export default function AppStartPage() {
 
   useEffect(() => {
     const t1 = window.setTimeout(() => setShowTitle(true), 1000);
-    const t2 = window.setTimeout(() => router.push("/games/game1"), 2500);
+    const t2 = window.setTimeout(() => {
+      markEnteredViaSplash();
+      router.push("/games/game1");
+    }, 2500);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);

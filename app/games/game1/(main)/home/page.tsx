@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatCurrency, loadGlobalData } from "@/lib/storage";
 import { loadGame1Data, saveGame1Data } from "@/lib/game1-data";
 import { stickerButton } from "@/lib/ui";
+import { useRequireSplashEntry } from "@/lib/entry-guard";
 
 // 仲間が増えるたびに背景も賑やかになる想定（home_01=1人〜home_04=4人）。
 // パーティ編成の仕組みがまだ無いため、現状はテストとしてhome_04で固定。
@@ -21,6 +22,7 @@ const HOME_SIDE_BUTTONS = [
 ];
 
 export default function Game1HomePage() {
+  const ready = useRequireSplashEntry();
   const [currency, setCurrency] = useState(0);
   const [expPoints, setExpPoints] = useState(0);
 
@@ -32,6 +34,10 @@ export default function Game1HomePage() {
     saveGame1Data(next);
     setExpPoints(next.expPoints);
   }, []);
+
+  // ブックマーク等でこの画面へ直接アクセスされた場合、入口（/）へ差し戻す。
+  // 差し戻し判定が済むまでは何も表示しない。
+  if (!ready) return null;
 
   return (
     <div className="relative h-[100dvh] overflow-hidden bg-background">

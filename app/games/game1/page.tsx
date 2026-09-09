@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBackgroundImage } from "@/lib/background";
+import { useRequireSplashEntry } from "@/lib/entry-guard";
 
 type Stage = "initial" | "bg" | "logo" | "ready" | "loading";
 
@@ -12,6 +13,7 @@ const LOADING_DURATION = 1400;
 
 export default function Game1StartPage() {
   const router = useRouter();
+  const ready = useRequireSplashEntry();
   const [background, setBackground] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("initial");
 
@@ -36,6 +38,10 @@ export default function Game1StartPage() {
       router.push("/games/game1/home");
     }, LOADING_DURATION);
   };
+
+  // ブックマーク等でこの画面へ直接アクセスされた場合、入口（/）へ差し戻す。
+  // 差し戻し判定が済むまでは何も表示しない。
+  if (!ready) return null;
 
   return (
     <div
