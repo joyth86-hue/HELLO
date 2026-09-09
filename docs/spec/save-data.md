@@ -61,7 +61,7 @@ interface Game1SaveData {
 }
 ```
 
-`inventory`は現状、アイテムを入手する仕組み（敵を倒す・報酬をもらうなど）が無いため、[バッグの中身画面](./screens/bag.md)の表示確認用にテストデータ（10種類）を初期値として持たせている。入手システムが決まったら、この初期値は撤去する想定。
+`inventory`の初期値は空配列（`[]`）。アイテムは[アイテムドロップ](./adventure-system.md#アイテムドロップ)でしか入手できない、正式なスタート状態。
 
 `equipment`はキーにキャラクターIDが無い（＝一度も装備操作をしていない）場合、装備なし（`{ weapon: null, artifacts: [null, null, null] }`）として扱う（`getCharacterEquipment()`ヘルパー）。詳細は[character-view.md](./screens/character-view.md)参照。
 

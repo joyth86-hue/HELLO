@@ -158,23 +158,11 @@ export function syncActivePartyWithUnlocks(data: Game1SaveData): Game1SaveData {
   return { ...data, activePartyIds: active };
 }
 
-// 敵を倒す・報酬をもらうといった「アイテムを入手する仕組み」がまだ無いため、
-// バッグ画面の表示を作って確認するための仮の初期所持アイテム。
-// 入手システムが決まったら、この初期値は撤去して空の配列にする。
+// 正式なスタート状態：アイテムはドロップ（lib/item-drop.ts）でしか入手できないため、
+// 所持なしから始まる。
 export const defaultGame1Data: Game1SaveData = {
   playCount: 0,
-  inventory: [
-    { itemId: "i001", quantity: 1 },
-    { itemId: "i005", quantity: 2 },
-    { itemId: "i011", quantity: 1 },
-    { itemId: "i026", quantity: 1 },
-    { itemId: "i041", quantity: 1 },
-    { itemId: "i051", quantity: 1 },
-    { itemId: "i066", quantity: 1 },
-    { itemId: "i076", quantity: 3 },
-    { itemId: "i101", quantity: 1 },
-    { itemId: "i226", quantity: 1 },
-  ],
+  inventory: [],
   equipment: {},
   maxClearedStage: 0,
   activePartyIds: ["c01"],
