@@ -10,6 +10,16 @@ import { stickerButton } from "@/lib/ui";
 // パーティ編成の仕組みがまだ無いため、現状はテストとしてhome_04で固定。
 const HOME_BACKGROUND = "/backgrounds/home/home_04_akane_koyuki_kaede_sayumi.png";
 
+// 画面右端・カエデの横の空きスペースに縦に並べる導線ボタン（上から順）。
+// アイコンは共通UIボタン素材（docs/spec/ui-buttons.md）から。実装はまだで、
+// 配置のみ（タップしても何も起きない）。
+const HOME_SIDE_BUTTONS = [
+  { key: "present", label: "プレゼント", icon: "/icons/buttons/ui_present.png" },
+  { key: "daily_missions", label: "デイリーミッション", icon: "/icons/buttons/ui_daily_missions.png" },
+  { key: "guide", label: "図鑑", icon: "/icons/buttons/ui_guide.png" },
+  { key: "settings", label: "設定", icon: "/icons/buttons/ui_settings.png" },
+];
+
 export default function Game1HomePage() {
   const [currency, setCurrency] = useState(0);
   const [expPoints, setExpPoints] = useState(0);
@@ -41,6 +51,19 @@ export default function Game1HomePage() {
           <span>経験値：</span>
           <span className="tabular-nums">{expPoints.toLocaleString()}pt</span>
         </p>
+      </div>
+
+      <div className="absolute right-4 top-[calc(6.5rem_+_env(safe-area-inset-top))] z-10 flex flex-col gap-3">
+        {HOME_SIDE_BUTTONS.map((btn) => (
+          <button key={btn.key} aria-label={btn.label}>
+            <img
+              src={btn.icon}
+              alt={btn.label}
+              className="h-14 w-14 rounded-xl object-contain"
+              draggable={false}
+            />
+          </button>
+        ))}
       </div>
 
       <div className="relative z-10 flex h-full flex-col items-center gap-8 p-6 pb-28 pt-20 text-center">
