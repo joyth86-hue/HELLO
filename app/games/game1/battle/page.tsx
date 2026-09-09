@@ -11,7 +11,17 @@ import {
   pickRandomEnemyFromPattern,
 } from "@/lib/enemy-scaling";
 import { calculateDamage } from "@/lib/combat";
-import { getCharacterLevel, loadGame1Data, saveGame1Data, type Game1SaveData } from "@/lib/game1-data";
+import {
+  addItemsToInventory,
+  getCharacterEquipment,
+  getCharacterLevel,
+  loadGame1Data,
+  saveGame1Data,
+  type Game1SaveData,
+} from "@/lib/game1-data";
+import { calculateEquipmentBonus, applyEquipmentBonusToStats } from "@/lib/item-effects";
+import { rollDropForBattle, type DroppedItem } from "@/lib/item-drop";
+import { getItemBaseInfo, type ItemBaseInfo } from "@/lib/items-info";
 import { getCharacterSkillKit } from "@/lib/skills-info";
 
 // 本実装のステージ内10バトル連戦（S-1〜S-10）。詳細はdocs/spec/screens/battle.md参照。
@@ -46,6 +56,8 @@ interface BattleUnit {
   maxHp: number;
   atk: number;
   def: number;
+  critRateBonus: number; // 装備による会心率加算（フラクション。敵は常に0）
+  critDamageBonus: number; // 装備による会心ダメージ加算（フラクション。敵は常に0）
   exp: number; // 敵のみ使用（倒したときに加算する経験値）
   alive: boolean;
   pose: Pose;
@@ -73,7 +85,9 @@ function poseAsset(unit: BattleUnit): string {
 function buildAllyUnits(partyIds: string[], saveData: Game1SaveData): BattleUnit[] {
   return partyIds.map((id, slot) => {
     const level = getCharacterLevel(saveData, id);
-    const stats = getCharacterStatsAtLevel(id, level);
+    const baseStats = getCharacterStatsAtLevel(id, level);
+    const bonus = calculateEquipmentBonus(getCharacterEquipment(saveData, id));
+    const stats = applyEquipmentBonusToStats(baseStats, bonus);
     return {
       key: `ally-${slot}`,
       side: "ally",
@@ -84,6 +98,8 @@ function buildAllyUnits(partyIds: string[], saveData: Game1SaveData): BattleUnit
       maxHp: stats.hp,
       atk: stats.atk,
       def: stats.def,
+      critRateBonus: bonus.critRatePoints / 100,
+      critDamageBonus: bonus.critDamagePoints / 100,
       exp: 0,
       alive: true,
       pose: "idle",
@@ -110,6 +126,8 @@ function buildEnemyUnits(stage: number, isBoss: boolean): BattleUnit[] {
       maxHp: scaled.hp,
       atk: scaled.atk,
       def: scaled.def,
+      critRateBonus: 0,
+      critDamageBonus: 0,
       exp: scaled.exp,
       alive: true,
       pose: "idle",
@@ -131,6 +149,9 @@ export default function BattlePage() {
   const [stageLabel, setStageLabel] = useState(1);
   const [subBattleLabel, setSubBattleLabel] = useState(1);
   const [expEarned, setExpEarned] = useState(0);
+  const [droppedItemSummary, setDroppedItemSummary] = useState<
+    { item: ItemBaseInfo; quantity: number }[]
+  >([]);
 
   const unitsRef = useRef<BattleUnit[]>([]);
   const startedRef = useRef(false);
@@ -153,7 +174,12 @@ export default function BattlePage() {
   async function performAttack(attackerKey: string, targetKey: string) {
     const attacker = getUnit(attackerKey);
     const target = getUnit(targetKey);
-    const { damage, isCrit } = calculateDamage(attacker.atk, target.def);
+    const { damage, isCrit } = calculateDamage(
+      attacker.atk,
+      target.def,
+      attacker.critRateBonus,
+      attacker.critDamageBonus
+    );
 
     attacker.stepped = true;
     sync();
@@ -241,6 +267,7 @@ export default function BattlePage() {
     try {
       let allies = buildAllyUnits(saveData.activePartyIds, saveData);
       let totalExp = 0;
+      const droppedItems: DroppedItem[] = [];
 
       for (let sub = 1; sub <= BATTLES_PER_STAGE; sub++) {
         setSubBattleLabel(sub);
@@ -251,12 +278,15 @@ export default function BattlePage() {
 
         const outcome = await runBattleLoop();
         if (outcome === "defeat") {
-          setExpEarned(totalExp);
+          // 全滅した場合は経験値・アイテムいずれも加算しない（クリアボーナス扱いのため）。
+          setExpEarned(0);
           setResult("defeat");
           return;
         }
 
         totalExp += enemies.reduce((sum, e) => sum + e.exp, 0);
+        const drop = rollDropForBattle(stage, isBoss);
+        if (drop) droppedItems.push(drop);
         allies = unitsRef.current.filter((u) => u.side === "ally");
 
         if (sub < BATTLES_PER_STAGE) {
@@ -267,13 +297,27 @@ export default function BattlePage() {
 
       // S-10（ボス）を撃破：ステージクリア
       const data = loadGame1Data();
-      const next: Game1SaveData = {
+      let next: Game1SaveData = {
         ...data,
         maxClearedStage: Math.max(data.maxClearedStage, stage),
         expPoints: data.expPoints + totalExp,
       };
+      next = addItemsToInventory(next, droppedItems.map((d) => d.itemId));
       saveGame1Data(next);
       setExpEarned(totalExp);
+
+      const summaryCounts = new Map<string, number>();
+      for (const d of droppedItems) {
+        summaryCounts.set(d.itemId, (summaryCounts.get(d.itemId) ?? 0) + 1);
+      }
+      setDroppedItemSummary(
+        Array.from(summaryCounts.entries())
+          .map(([itemId, quantity]) => {
+            const item = getItemBaseInfo(itemId);
+            return item ? { item, quantity } : null;
+          })
+          .filter((entry): entry is { item: ItemBaseInfo; quantity: number } => entry !== null)
+      );
       setResult("clear");
     } catch (err) {
       // 想定外のエラーで進行不能になった場合に、無言のまま固まるのを避ける保険。
@@ -303,11 +347,13 @@ export default function BattlePage() {
 
   useEffect(() => {
     if (!result) return;
+    // ドロップアイテムがある場合は読む時間を少し長めに取る。
+    const delay = result === "clear" && droppedItemSummary.length > 0 ? 3000 : 1800;
     const t = window.setTimeout(() => {
       router.push("/games/game1/home");
-    }, 1800);
+    }, delay);
     return () => window.clearTimeout(t);
-  }, [result, router]);
+  }, [result, router, droppedItemSummary]);
 
   function handleNormalAttack() {
     resolvePlayerActionRef.current?.();
@@ -388,9 +434,31 @@ export default function BattlePage() {
             {result === "clear" ? "ステージクリア！" : "敗北…"}
           </p>
           {result === "clear" && (
-            <p className="text-sm font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
-              獲得経験値：{expEarned}pt
-            </p>
+            <>
+              <p className="text-sm font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
+                獲得経験値：{expEarned}pt
+              </p>
+              {droppedItemSummary.length > 0 && (
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-2 px-6">
+                  {droppedItemSummary.map(({ item, quantity }) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-1.5 rounded-full bg-black/55 py-1 pl-1 pr-2.5"
+                    >
+                      <img
+                        src={item.asset}
+                        alt={item.name}
+                        className="h-6 w-6 rounded-full object-cover"
+                      />
+                      <span className="text-[11px] font-bold text-white">
+                        {item.name}
+                        {quantity > 1 ? ` ×${quantity}` : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CHARACTER_BASE_INFO, getCharacterBaseInfo } from "@/lib/characters-info";
 import { getCharacterStatsAtLevel } from "@/lib/character-growth";
 import { BASE_CRIT_RATE, CRIT_DAMAGE_MULTIPLIER } from "@/lib/combat";
+import { calculateEquipmentBonus, applyEquipmentBonusToStats } from "@/lib/item-effects";
 import {
   getCharacterEquipment,
   getCharacterLevel,
@@ -76,11 +77,11 @@ const CHARACTER_BG_COLORS: Record<string, { base: string; glow: string; text: st
   },
 };
 
-// 会心率・会心ダメージの表示用（lib/combat.tsの実際の戦闘計算と同じ値を使う）。
-// アーティファクトの効果値がまだ無いため、装備による上乗せ分は今は反映していない。
+// 会心率・会心ダメージの基礎値（装備なし）。lib/combat.tsの実際の戦闘計算と同じ値を使う。
+// 装備による上乗せ分はlib/item-effects.tsのcalculateEquipmentBonus()で別途加算する。
 const CRIT_RATE_PERCENT = Math.round(BASE_CRIT_RATE * 100);
 const CRIT_DAMAGE_PERCENT = Math.round(CRIT_DAMAGE_MULTIPLIER * 100);
-// 属性相性表が未定のため、属性耐性は仮に0%表示。
+// 属性相性表が未定のため、属性耐性の基礎値は仮に0%（装備による上乗せ分だけ表示に反映）。
 const PLACEHOLDER_ELEMENT_RESISTANCE = 0;
 
 type PickerTarget = { kind: "weapon" } | { kind: "artifact"; index: 0 | 1 | 2 };
@@ -185,11 +186,17 @@ export default function CharacterViewPage() {
   const currentBaseInfo = getCharacterBaseInfo(currentId);
   const isInParty = saveData ? saveData.activePartyIds.includes(currentId) : false;
   const level = saveData ? getCharacterLevel(saveData, currentId) : 1;
-  const stats = getCharacterStatsAtLevel(currentId, level);
+  const baseStats = getCharacterStatsAtLevel(currentId, level);
 
   const currentEquipment = saveData ? getCharacterEquipment(saveData, currentId) : EMPTY_EQUIPMENT;
   const weaponItem = currentEquipment.weapon ? getItemBaseInfo(currentEquipment.weapon) : undefined;
   const artifactItems = currentEquipment.artifacts.map((id) => (id ? getItemBaseInfo(id) : undefined));
+
+  const equipmentBonus = calculateEquipmentBonus(currentEquipment);
+  const stats = applyEquipmentBonusToStats(baseStats, equipmentBonus);
+  const displayedCritRate = CRIT_RATE_PERCENT + equipmentBonus.critRatePoints;
+  const displayedCritDamage = CRIT_DAMAGE_PERCENT + equipmentBonus.critDamagePoints;
+  const displayedElementResist = PLACEHOLDER_ELEMENT_RESISTANCE + equipmentBonus.elementResistPoints;
 
   const owned = useMemo(() => {
     if (!effectiveData) return [];
@@ -425,7 +432,7 @@ export default function CharacterViewPage() {
               </div>
               <div className="flex justify-between">
                 <span>会心率</span>
-                <span className="font-bold tabular-nums">{CRIT_RATE_PERCENT}%</span>
+                <span className="font-bold tabular-nums">{displayedCritRate}%</span>
               </div>
               <div className="flex justify-between">
                 <span>攻撃力</span>
@@ -433,7 +440,7 @@ export default function CharacterViewPage() {
               </div>
               <div className="flex justify-between">
                 <span>会心ダメージ</span>
-                <span className="font-bold tabular-nums">{CRIT_DAMAGE_PERCENT}%</span>
+                <span className="font-bold tabular-nums">{displayedCritDamage}%</span>
               </div>
               <div className="flex justify-between">
                 <span>防御力</span>
@@ -441,7 +448,7 @@ export default function CharacterViewPage() {
               </div>
               <div className="flex justify-between">
                 <span>属性耐性</span>
-                <span className="font-bold tabular-nums">{PLACEHOLDER_ELEMENT_RESISTANCE}%</span>
+                <span className="font-bold tabular-nums">{displayedElementResist}%</span>
               </div>
             </div>
           </div>

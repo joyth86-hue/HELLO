@@ -97,6 +97,26 @@ export function investExpInCharacter(
   };
 }
 
+// アイテムドロップで入手したアイテムを所持数に加算する。同じIDが複数個渡された
+// 場合はまとめて加算し、既に持っているアイテムは数量を増やす（無ければ新規追加）。
+export function addItemsToInventory(data: Game1SaveData, itemIds: string[]): Game1SaveData {
+  if (itemIds.length === 0) return data;
+  const addCounts = new Map<string, number>();
+  for (const id of itemIds) {
+    addCounts.set(id, (addCounts.get(id) ?? 0) + 1);
+  }
+  const inventory = data.inventory.map((entry) => ({ ...entry }));
+  for (const [itemId, addQuantity] of addCounts) {
+    const existing = inventory.find((entry) => entry.itemId === itemId);
+    if (existing) {
+      existing.quantity += addQuantity;
+    } else {
+      inventory.push({ itemId, quantity: addQuantity });
+    }
+  }
+  return { ...data, inventory };
+}
+
 // 新しく仲間になったキャラクターを、編成人数が3人未満の間は自動で編成に加える
 // （「4人揃うまではデフォルトでON、それ以降は手動で入れ替える」という仕様のため）。
 export function syncActivePartyWithUnlocks(data: Game1SaveData): Game1SaveData {
