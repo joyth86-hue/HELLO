@@ -6,18 +6,28 @@ import { getCharacterStatsAtLevel } from "@/lib/character-growth";
 import { BASE_CRIT_RATE, CRIT_DAMAGE_MULTIPLIER } from "@/lib/combat";
 import { calculateEquipmentBonus, applyEquipmentBonusToStats } from "@/lib/item-effects";
 import {
-  countEquippedInstances,
+  findEquippedOwner,
   getCharacterEquipment,
   getCharacterLevel,
+  getItemInstance,
   getUnlockedCharacterIds,
   investExpInCharacter,
+  isInstanceEquippedElsewhere,
   loadGame1Data,
   saveGame1Data,
   syncActivePartyWithUnlocks,
   MAX_PARTY_SIZE,
   type CharacterEquipment,
   type Game1SaveData,
+  type ItemInstance,
 } from "@/lib/game1-data";
+import {
+  applySynthesis,
+  flooredPlus,
+  isSameSynthesisGroup,
+  previewSynthesis,
+  type SynthesisPreview,
+} from "@/lib/item-synthesis";
 import { getEffectiveGame1Data } from "@/lib/test-mode";
 import { getItemBaseInfo, type ItemBaseInfo } from "@/lib/items-info";
 import GameBackground from "@/components/GameBackground";
@@ -119,26 +129,36 @@ function CharacterPane({ id, frame }: { id: string; frame: number }) {
 
 function EquipSlot({
   caption,
-  item,
+  entry,
   onClick,
 }: {
   caption: string;
-  item: ItemBaseInfo | undefined;
+  entry: { instance: ItemInstance; item: ItemBaseInfo } | undefined;
   onClick: () => void;
 }) {
+  const plus = entry ? flooredPlus(entry.instance) : 0;
   return (
     <button onClick={onClick} className="flex flex-col items-center gap-1">
       <div
-        className={`flex aspect-square w-full items-center justify-center rounded-xl border-2 p-1.5 ${
-          item
+        className={`relative flex aspect-square w-full items-center justify-center rounded-xl border-2 p-1.5 ${
+          entry
             ? "border-black bg-white"
             : "border-dashed border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.06)]"
         }`}
       >
-        {item ? (
-          <img src={item.asset} alt={item.name} className="h-full w-full rounded-lg object-cover" />
+        {entry ? (
+          <img
+            src={entry.item.asset}
+            alt={entry.item.name}
+            className="h-full w-full rounded-lg object-cover"
+          />
         ) : (
           <span className="text-2xl font-bold text-[rgba(201,195,255,0.5)]">+</span>
+        )}
+        {plus > 0 && (
+          <span className="absolute bottom-0.5 right-0.5 rounded-full bg-black px-1 py-0.5 text-[8px] font-bold text-white">
+            +{plus}
+          </span>
         )}
       </div>
       <span className="text-[9px] font-medium text-[#8f89b3]">{caption}</span>
@@ -156,6 +176,10 @@ export default function CharacterViewPage() {
   const [showTrainSheet, setShowTrainSheet] = useState(false);
   const [trainInput, setTrainInput] = useState("");
   const [trainMessage, setTrainMessage] = useState<string | null>(null);
+  const [showSynthesis, setShowSynthesis] = useState(false);
+  const [synthesisTargetId, setSynthesisTargetId] = useState<string | null>(null);
+  const [synthesisMaterialIds, setSynthesisMaterialIds] = useState<string[]>([]);
+  const [synthesisMessage, setSynthesisMessage] = useState<string | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const pointerStartX = useRef<number | null>(null);
   const [idleFrame, setIdleFrame] = useState(0);
@@ -190,10 +214,21 @@ export default function CharacterViewPage() {
   const baseStats = getCharacterStatsAtLevel(currentId, level);
 
   const currentEquipment = saveData ? getCharacterEquipment(saveData, currentId) : EMPTY_EQUIPMENT;
-  const weaponItem = currentEquipment.weapon ? getItemBaseInfo(currentEquipment.weapon) : undefined;
-  const artifactItems = currentEquipment.artifacts.map((id) => (id ? getItemBaseInfo(id) : undefined));
 
-  const equipmentBonus = calculateEquipmentBonus(currentEquipment);
+  function resolveEquipped(instanceId: string | null) {
+    if (!saveData || !instanceId) return undefined;
+    const instance = getItemInstance(saveData, instanceId);
+    if (!instance) return undefined;
+    const item = getItemBaseInfo(instance.itemId);
+    return item ? { instance, item } : undefined;
+  }
+  const weaponEntry = resolveEquipped(currentEquipment.weapon);
+  const artifactEntries = currentEquipment.artifacts.map((id) => resolveEquipped(id));
+
+  // 装備の実効果はテストモード中の仮所持アイテムも試着できるよう、effectiveData
+  // （lib/test-mode.ts）の在庫を使って解決する（装備欄の参照先instanceIdは常に
+  // 実データ側だが、テストモード中はeffectiveDataの在庫にも同じ形の個体が乗る）。
+  const equipmentBonus = calculateEquipmentBonus(currentEquipment, effectiveData?.inventory ?? []);
   const stats = applyEquipmentBonusToStats(baseStats, equipmentBonus);
   const displayedCritRate = CRIT_RATE_PERCENT + equipmentBonus.critRatePoints;
   const displayedCritDamage = CRIT_DAMAGE_PERCENT + equipmentBonus.critDamagePoints;
@@ -202,34 +237,107 @@ export default function CharacterViewPage() {
   const owned = useMemo(() => {
     if (!effectiveData) return [];
     return effectiveData.inventory
-      .map((entry) => {
-        const item = getItemBaseInfo(entry.itemId);
-        return item ? { item, quantity: entry.quantity } : null;
+      .map((instance) => {
+        const item = getItemBaseInfo(instance.itemId);
+        return item ? { instance, item } : null;
       })
-      .filter((entry): entry is { item: ItemBaseInfo; quantity: number } => entry !== null);
+      .filter((entry): entry is { instance: ItemInstance; item: ItemBaseInfo } => entry !== null);
   }, [effectiveData]);
 
   const candidates = useMemo(() => {
     if (!picker || !saveData) return [];
     const slotRef = { characterId: currentId, slot: picker.kind === "weapon" ? ("weapon" as const) : picker.index };
-    const hasSpareCopy = (itemId: string, quantity: number) =>
-      quantity - countEquippedInstances(saveData.equipment, itemId, slotRef) > 0;
+    const isAvailable = (instance: ItemInstance) =>
+      !isInstanceEquippedElsewhere(saveData.equipment, instance.instanceId, slotRef);
 
     if (picker.kind === "weapon") {
       return owned.filter(
-        (o) => o.item.type === currentBaseInfo?.weaponType && hasSpareCopy(o.item.id, o.quantity)
+        ({ item, instance }) => item.type === currentBaseInfo?.weaponType && isAvailable(instance)
       );
     }
-    const equippedElsewhere = new Set(
+    const equippedElsewhereSameChar = new Set(
       currentEquipment.artifacts.filter((id, i) => id !== null && i !== picker.index)
     );
     return owned.filter(
-      (o) =>
-        o.item.type === "アーティファクト" &&
-        !equippedElsewhere.has(o.item.id) &&
-        hasSpareCopy(o.item.id, o.quantity)
+      ({ item, instance }) =>
+        item.type === "アーティファクト" &&
+        !equippedElsewhereSameChar.has(instance.instanceId) &&
+        isAvailable(instance)
     );
   }, [picker, owned, currentBaseInfo, currentEquipment, saveData, currentId]);
+
+  // 合成は実データ（テストモードの仮アイテムは対象外）を対象にする。
+  // 候補：未装備のもの、または「今表示中のキャラ自身」が装備中のもの
+  // （他のキャラの装備は合成の材料にできない＝画面に見えていないキャラの
+  // 装備が知らないうちに消費されるのを防ぐため）。
+  const synthesisEligible = useMemo(() => {
+    if (!saveData) return [];
+    return saveData.inventory
+      .map((instance) => {
+        const item = getItemBaseInfo(instance.itemId);
+        return item ? { instance, item } : null;
+      })
+      .filter((entry): entry is { instance: ItemInstance; item: ItemBaseInfo } => entry !== null)
+      .filter(({ instance }) => {
+        const owner = findEquippedOwner(saveData.equipment, instance.instanceId);
+        return owner === null || owner === currentId;
+      });
+  }, [saveData, currentId]);
+
+  const synthesisTargetEntry = synthesisTargetId
+    ? synthesisEligible.find((e) => e.instance.instanceId === synthesisTargetId)
+    : undefined;
+
+  const synthesisMaterialCandidates = useMemo(() => {
+    if (!synthesisTargetEntry) return [];
+    return synthesisEligible.filter(
+      ({ instance, item }) =>
+        instance.instanceId !== synthesisTargetEntry.instance.instanceId &&
+        isSameSynthesisGroup(item, synthesisTargetEntry.item)
+    );
+  }, [synthesisEligible, synthesisTargetEntry]);
+
+  const synthesisPreview: SynthesisPreview | null = useMemo(() => {
+    if (!saveData || !synthesisTargetId || synthesisMaterialIds.length === 0) return null;
+    return previewSynthesis(saveData, synthesisTargetId, synthesisMaterialIds);
+  }, [saveData, synthesisTargetId, synthesisMaterialIds]);
+
+  function openSynthesis() {
+    setSynthesisTargetId(null);
+    setSynthesisMaterialIds([]);
+    setSynthesisMessage(null);
+    setShowSynthesis(true);
+  }
+
+  function closeSynthesis() {
+    setShowSynthesis(false);
+    setSynthesisTargetId(null);
+    setSynthesisMaterialIds([]);
+    setSynthesisMessage(null);
+  }
+
+  function pickSynthesisTarget(instanceId: string) {
+    setSynthesisTargetId(instanceId);
+    setSynthesisMaterialIds([]);
+  }
+
+  function toggleSynthesisMaterial(instanceId: string) {
+    setSynthesisMaterialIds((ids) =>
+      ids.includes(instanceId) ? ids.filter((id) => id !== instanceId) : [...ids, instanceId]
+    );
+  }
+
+  function confirmSynthesis() {
+    if (!saveData || !synthesisPreview) return;
+    const next = applySynthesis(saveData, synthesisPreview);
+    saveGame1Data(next);
+    setSaveData(next);
+    setSynthesisMessage(
+      `${synthesisPreview.survivorItem.name} +${synthesisPreview.resultPlusFloored} になりました`
+    );
+    setSynthesisTargetId(null);
+    setSynthesisMaterialIds([]);
+  }
 
   function toggleParty() {
     if (!saveData) return;
@@ -287,13 +395,13 @@ export default function CharacterViewPage() {
     setSaveData(nextSaveData);
   }
 
-  function equip(itemId: string) {
+  function equip(instanceId: string) {
     if (!picker) return;
     if (picker.kind === "weapon") {
-      updateEquipment({ ...currentEquipment, weapon: itemId });
+      updateEquipment({ ...currentEquipment, weapon: instanceId });
     } else {
       const artifacts = [...currentEquipment.artifacts] as CharacterEquipment["artifacts"];
-      artifacts[picker.index] = itemId;
+      artifacts[picker.index] = instanceId;
       updateEquipment({ ...currentEquipment, artifacts });
     }
     setPicker(null);
@@ -416,12 +524,12 @@ export default function CharacterViewPage() {
         <div className="px-4 pb-3">
           <p className="mb-1.5 text-[11px] font-medium tracking-wide text-[#b8b3d9]">装備</p>
           <div className="grid grid-cols-4 gap-3">
-            <EquipSlot caption="武器" item={weaponItem} onClick={() => setPicker({ kind: "weapon" })} />
+            <EquipSlot caption="武器" entry={weaponEntry} onClick={() => setPicker({ kind: "weapon" })} />
             {([0, 1, 2] as const).map((i) => (
               <EquipSlot
                 key={i}
                 caption="アーティファクト"
-                item={artifactItems[i]}
+                entry={artifactEntries[i]}
                 onClick={() => setPicker({ kind: "artifact", index: i })}
               />
             ))}
@@ -472,6 +580,14 @@ export default function CharacterViewPage() {
               経験値ポイント {(saveData?.expPoints ?? 0).toLocaleString()}pt
             </span>
           </button>
+
+          <button
+            onClick={openSynthesis}
+            className="mt-2 flex w-full items-center justify-between rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2 text-sm text-[#eee9ff] backdrop-blur-sm"
+          >
+            <span className="font-bold">合成</span>
+            <span className="text-[11px] text-[#b8b3d9]">武器・アーティファクトを強化</span>
+          </button>
         </div>
       </div>
 
@@ -500,25 +616,28 @@ export default function CharacterViewPage() {
                   : "装備できるアーティファクトを持っていません"}
               </p>
             ) : (
-              <div className="grid grid-cols-4 gap-3">
-                {candidates.map(({ item, quantity }) => (
-                  <button
-                    key={item.id}
-                    onClick={() => equip(item.id)}
-                    className="relative rounded-xl border-2 border-zinc-300 bg-white p-1.5"
-                  >
-                    <img
-                      src={item.asset}
-                      alt={item.name}
-                      className="aspect-square w-full rounded-lg object-cover"
-                    />
-                    {quantity > 1 && (
-                      <span className="absolute bottom-1 right-1 rounded-full bg-black px-1.5 py-0.5 text-[10px] font-bold text-white">
-                        ×{quantity}
-                      </span>
-                    )}
-                  </button>
-                ))}
+              <div className="grid grid-cols-8 gap-1.5">
+                {candidates.map(({ item, instance }) => {
+                  const plus = flooredPlus(instance);
+                  return (
+                    <button
+                      key={instance.instanceId}
+                      onClick={() => equip(instance.instanceId)}
+                      className="relative rounded-lg border-2 border-zinc-300 bg-white p-1"
+                    >
+                      <img
+                        src={item.asset}
+                        alt={item.name}
+                        className="aspect-square w-full rounded object-cover"
+                      />
+                      {plus > 0 && (
+                        <span className="absolute bottom-0.5 right-0.5 rounded-full bg-black px-1 py-0.5 text-[8px] font-bold text-white">
+                          +{plus}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -563,6 +682,129 @@ export default function CharacterViewPage() {
                 決定
               </button>
             </div>
+          </div>
+        </>
+      )}
+
+      {showSynthesis && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/45" onClick={closeSynthesis} aria-hidden="true" />
+          <div className="fixed inset-x-0 bottom-0 z-[61] max-h-[80vh] overflow-y-auto rounded-t-2xl border-t-2 border-black bg-[#fffaf0] p-4 pb-6">
+            {!synthesisTargetEntry ? (
+              <>
+                <p className="mb-1 font-bold text-black">合成：残す方を選ぶ</p>
+                <p className="mb-3 text-xs text-zinc-500">
+                  強化したい武器・アーティファクトを選んでください（{currentBaseInfo?.name ?? ""}が今装備中のものも選べます）。
+                </p>
+                {synthesisEligible.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-zinc-500">合成できるアイテムを持っていません</p>
+                ) : (
+                  <div className="grid grid-cols-8 gap-1.5">
+                    {synthesisEligible.map(({ instance, item }) => {
+                      const plus = flooredPlus(instance);
+                      return (
+                        <button
+                          key={instance.instanceId}
+                          onClick={() => pickSynthesisTarget(instance.instanceId)}
+                          className="relative rounded-lg border-2 border-zinc-300 bg-white p-1"
+                        >
+                          <img src={item.asset} alt={item.name} className="aspect-square w-full rounded object-cover" />
+                          {plus > 0 && (
+                            <span className="absolute bottom-0.5 right-0.5 rounded-full bg-black px-1 py-0.5 text-[8px] font-bold text-white">
+                              +{plus}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <button
+                  onClick={closeSynthesis}
+                  className="mt-4 w-full rounded-full border-2 border-zinc-300 py-2 text-sm font-bold text-zinc-600"
+                >
+                  閉じる
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="mb-3 flex items-center gap-2">
+                  <img
+                    src={synthesisTargetEntry.item.asset}
+                    alt={synthesisTargetEntry.item.name}
+                    className="h-12 w-12 rounded-lg border-2 border-black bg-white object-cover"
+                  />
+                  <div>
+                    <p className="font-bold text-black">
+                      {synthesisTargetEntry.item.name} +{flooredPlus(synthesisTargetEntry.instance)}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      レア度 {synthesisTargetEntry.item.rarity} ・ 素材を選んでください（複数選択可）
+                    </p>
+                  </div>
+                </div>
+
+                {synthesisMaterialCandidates.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-zinc-500">
+                    合成できる同じ種類のアイテムを他に持っていません
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-8 gap-1.5">
+                    {synthesisMaterialCandidates.map(({ instance, item }) => {
+                      const plus = flooredPlus(instance);
+                      const selected = synthesisMaterialIds.includes(instance.instanceId);
+                      return (
+                        <button
+                          key={instance.instanceId}
+                          onClick={() => toggleSynthesisMaterial(instance.instanceId)}
+                          className={`relative rounded-lg border-2 bg-white p-1 ${
+                            selected ? "border-[#4a3f86] shadow-[2px_2px_0_0_#4a3f86]" : "border-zinc-300"
+                          }`}
+                        >
+                          <img src={item.asset} alt={item.name} className="aspect-square w-full rounded object-cover" />
+                          {plus > 0 && (
+                            <span className="absolute bottom-0.5 right-0.5 rounded-full bg-black px-1 py-0.5 text-[8px] font-bold text-white">
+                              +{plus}
+                            </span>
+                          )}
+                          {selected && (
+                            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#4a3f86] text-[9px] font-bold text-white">
+                              ✓
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {synthesisPreview && (
+                  <p className="mt-3 rounded-lg bg-[rgba(74,63,134,0.08)] px-3 py-2 text-xs font-bold text-[#4a3f86]">
+                    {synthesisPreview.survivorItem.name}　+{synthesisPreview.beforePlusFloored} → +
+                    {synthesisPreview.resultPlusFloored}
+                  </p>
+                )}
+                {synthesisMessage && (
+                  <p className="mt-3 text-xs font-bold text-[#4a3f86]">{synthesisMessage}</p>
+                )}
+
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => setSynthesisTargetId(null)}
+                    className="flex-1 rounded-full border-2 border-zinc-300 py-2 text-sm font-bold text-zinc-600"
+                  >
+                    戻る
+                  </button>
+                  <button
+                    onClick={confirmSynthesis}
+                    disabled={!synthesisPreview}
+                    className="flex-1 rounded-full border-2 border-black bg-[#c9c3ff] py-2 text-sm font-bold text-black disabled:opacity-40"
+                  >
+                    合成する
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </>
       )}

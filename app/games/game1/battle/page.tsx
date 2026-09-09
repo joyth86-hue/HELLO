@@ -86,7 +86,7 @@ function buildAllyUnits(partyIds: string[], saveData: Game1SaveData): BattleUnit
   return partyIds.map((id, slot) => {
     const level = getCharacterLevel(saveData, id);
     const baseStats = getCharacterStatsAtLevel(id, level);
-    const bonus = calculateEquipmentBonus(getCharacterEquipment(saveData, id));
+    const bonus = calculateEquipmentBonus(getCharacterEquipment(saveData, id), saveData.inventory);
     const stats = applyEquipmentBonusToStats(baseStats, bonus);
     return {
       key: `ally-${slot}`,
@@ -152,6 +152,7 @@ export default function BattlePage() {
   const [droppedItemSummary, setDroppedItemSummary] = useState<
     { item: ItemBaseInfo; quantity: number }[]
   >([]);
+  const [bagFullCount, setBagFullCount] = useState(0);
 
   const unitsRef = useRef<BattleUnit[]>([]);
   const startedRef = useRef(false);
@@ -271,12 +272,17 @@ export default function BattlePage() {
       expPoints: data.expPoints + totalExp,
       ...(cleared ? { maxClearedStage: Math.max(data.maxClearedStage, stage) } : {}),
     };
-    next = addItemsToInventory(next, droppedItems.map((d) => d.itemId));
+    const addResult = addItemsToInventory(next, droppedItems.map((d) => d.itemId));
+    next = addResult.data;
     saveGame1Data(next);
     setExpEarned(totalExp);
+    setBagFullCount(addResult.rejectedCount);
 
+    // 所持数上限で受け取れなかった分は一覧から除く（中身を見せない仕様のため、
+    // どのアイテムが弾かれたかは追跡しない＝先に加算できた分だけ集計する）。
+    const acceptedDrops = droppedItems.slice(0, addResult.acceptedCount);
     const summaryCounts = new Map<string, number>();
-    for (const d of droppedItems) {
+    for (const d of acceptedDrops) {
       summaryCounts.set(d.itemId, (summaryCounts.get(d.itemId) ?? 0) + 1);
     }
     setDroppedItemSummary(
@@ -358,12 +364,12 @@ export default function BattlePage() {
   useEffect(() => {
     if (!result) return;
     // 獲得報酬（経験値・ドロップ）がある場合は読む時間を少し長めに取る。
-    const delay = expEarned > 0 || droppedItemSummary.length > 0 ? 3000 : 1800;
+    const delay = expEarned > 0 || droppedItemSummary.length > 0 || bagFullCount > 0 ? 3000 : 1800;
     const t = window.setTimeout(() => {
       router.push("/games/game1/home");
     }, delay);
     return () => window.clearTimeout(t);
-  }, [result, router, expEarned, droppedItemSummary]);
+  }, [result, router, expEarned, droppedItemSummary, bagFullCount]);
 
   function handleNormalAttack() {
     resolvePlayerActionRef.current?.();
@@ -469,6 +475,11 @@ export default function BattlePage() {
                 </div>
               )}
             </>
+          )}
+          {bagFullCount > 0 && (
+            <p className="mt-1 text-xs font-bold text-[#ffb4b4] [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
+              バッグの所持数が上限のため、{bagFullCount}個のアイテムを受け取れませんでした
+            </p>
           )}
         </div>
       )}

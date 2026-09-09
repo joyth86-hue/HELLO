@@ -38,20 +38,25 @@ interface GlobalSaveData {
 `game1`のデータは[lib/game1-data.ts](../../lib/game1-data.ts)にまとめている。
 
 ```ts
-interface InventoryEntry {
+// 所持アイテム1個1個を指す実体。「ID＋所持数」ではなく個体（インスタンス）単位で
+// 管理する（合成で個体ごとに強化度合いが変わるため、詳細はitems.md参照）。
+interface ItemInstance {
+  instanceId: string; // 個体ごとに一意なID
   itemId: string; // lib/items-info.tsのID（例: "i001"）
-  quantity: number;
+  plus: number; // 合成による強化値。端数（小数）まで正確に持つ。効果・表示は切り捨てて使う
 }
 
 // キャラクター1体分の装備。武器スロット1つ＋アーティファクトスロット3つ固定。
+// 値はアイテムIDではなく、所持アイテムの個体ID（ItemInstance.instanceId）。
 interface CharacterEquipment {
-  weapon: string | null; // lib/items-info.tsのID
+  weapon: string | null;
   artifacts: [string | null, string | null, string | null];
 }
 
 interface Game1SaveData {
+  schemaVersion: number; // セーブデータの構造バージョン。一致しない古いデータは自動的に初期状態にリセットする
   playCount: number; // Game1画面を開いた回数
-  inventory: InventoryEntry[]; // 所持アイテム（バッグの中身画面で使用）
+  inventory: ItemInstance[]; // 所持アイテム（上限100個体、バッグの中身画面で使用）
   equipment: Record<string, CharacterEquipment>; // キャラID → 装備（キャラクター確認画面で使用）
   maxClearedStage: number; // クリア済みの最大ステージ番号（0=未クリア）
   activePartyIds: string[]; // バトルに参加させるキャラID（最大3人）
@@ -61,13 +66,17 @@ interface Game1SaveData {
 }
 ```
 
-`inventory`の初期値は空配列（`[]`）。アイテムは[アイテムドロップ](./adventure-system.md#アイテムドロップ)でしか入手できない、正式なスタート状態。
+`inventory`の初期値は空配列（`[]`）。アイテムは[アイテムドロップ](./adventure-system.md#アイテムドロップ)でしか入手できない、正式なスタート状態。個体の管理・上限・合成の詳細は[items.md](./items.md#アイテムの個体管理合成のための前提)参照。
 
 `equipment`はキーにキャラクターIDが無い（＝一度も装備操作をしていない）場合、装備なし（`{ weapon: null, artifacts: [null, null, null] }`）として扱う（`getCharacterEquipment()`ヘルパー）。詳細は[character-view.md](./screens/character-view.md)参照。
 
 `maxClearedStage` / `activePartyIds`は[冒険システム設計](./adventure-system.md)で使う。キャラクターの仲間解放は`maxClearedStage`から`isCharacterUnlocked()`で判定し、新しく解放されたキャラクターは編成が3人未満なら`syncActivePartyWithUnlocks()`で自動的に`activePartyIds`へ追加する。
 
 `characterInvestedExp`は累計値のみを保存し、レベルは都度[lib/character-growth.ts](../../lib/character-growth.ts)の`levelFromInvestedExp()`で逆算する（`getCharacterLevel()`経由）。詳細は[adventure-system.md](./adventure-system.md#経験値とレベル成長)参照。
+
+### `schemaVersion`によるセーブデータの互換性
+
+`Game1SaveData`の構造（特に`inventory`の形）を変える際は、[lib/game1-data.ts](../../lib/game1-data.ts)の`SAVE_SCHEMA_VERSION`をインクリメントする。`loadGame1Data()`は保存されている生データを`readRawGameData()`でマージ無しに読み、そのバージョンが現在のものと一致しない（＝古い構造のまま、またはバージョン自体が無い）場合は初期状態（`defaultGame1Data`）を返す。これにより、構造が変わった後に古い形式のデータを誤って読み込んで表示や計算が壊れることを防ぐ（読み込み時点では実際のlocalStorageへの書き戻しは行わず、その後何らかの保存操作が発生した時点で新しい構造として上書きされる）。
 
 ## 命名の補足
 

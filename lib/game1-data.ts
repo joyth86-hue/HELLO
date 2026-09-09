@@ -1,15 +1,29 @@
 // Game1専用のセーブデータ（lib/storage.tsのloadGameData/saveGameDataを使う）。
 // 他のゲームからは参照しない想定。詳細はdocs/spec/save-data.mdを参照。
 
-import { loadGameData, saveGameData } from "./storage";
+import { loadGameData, saveGameData, readRawGameData } from "./storage";
 import { levelFromInvestedExp } from "./character-growth";
 
-export interface InventoryEntry {
+// アイテムの所持数上限（個体数ベース）。超えるドロップは受け取れない。
+export const INVENTORY_CAP = 100;
+
+// 所持アイテム1個1個を指す実体。同じitemIdでも個体ごとに合成の＋値が異なりうる
+// ため、「itemId＋所持数」ではなく個体（インスタンス）単位で管理する。
+export interface ItemInstance {
+  instanceId: string;
   itemId: string;
-  quantity: number;
+  // 合成による強化値。内部では端数（小数）まで正確に保持し、実際の効果・表示には
+  // 切り捨てた整数値を使う（lib/item-synthesis.tsのflooredPlus参照）。
+  plus: number;
+}
+
+function generateInstanceId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `inst-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 // キャラクター1体分の装備。武器スロット1つ＋アーティファクトスロット3つ固定。
+// 値はアイテムID**ではなく**、所持アイテムの個体ID（ItemInstance.instanceId）。
 export interface CharacterEquipment {
   weapon: string | null;
   artifacts: [string | null, string | null, string | null];
@@ -19,9 +33,14 @@ export interface CharacterEquipment {
 // （getCharacterEquipmentで空の装備として扱う）。
 export type EquipmentState = Record<string, CharacterEquipment>;
 
+// セーブデータの構造を変える際にインクリメントする。読み込み時にこれと一致しない
+// （＝古い構造の）データは初期状態として扱う（詳細はloadGame1Data参照）。
+export const SAVE_SCHEMA_VERSION = 2;
+
 export interface Game1SaveData {
+  schemaVersion: number;
   playCount: number;
-  inventory: InventoryEntry[];
+  inventory: ItemInstance[];
   equipment: EquipmentState;
   // クリア済みの最大ステージ番号（0=まだ1つもクリアしていない＝ステージ1のみ挑戦可）。
   maxClearedStage: number;
@@ -49,27 +68,60 @@ export function getCharacterEquipment(
   return data.equipment[characterId] ?? EMPTY_EQUIPMENT;
 }
 
+export function getItemInstance(data: Game1SaveData, instanceId: string): ItemInstance | undefined {
+  return data.inventory.find((i) => i.instanceId === instanceId);
+}
+
 // 装備スロット1つを指す参照（武器スロットは"weapon"、アーティファクトスロットは0-2）。
 export type EquipmentSlotRef = { characterId: string; slot: "weapon" | 0 | 1 | 2 };
 
-// 指定したアイテムIDが、キャラクター全員の装備欄に合計何個使われているかを数える
-// （同じ個体を複数箇所に付けられないよう、所持数と比較するために使う）。
-// excludeで指定したスロットは集計から除外する（そのスロット自身の現在の中身を
-// 「空き」として扱い、同じアイテムを選び直せるようにするため）。
-export function countEquippedInstances(
+// 指定した個体（instanceId）が、exclude以外のどこかのスロットに装備されているかを調べる
+// （同じ個体を複数箇所に付けられないようにするため）。excludeで指定したスロットは
+// 「今まさにそこに入っている個体を選び直せるように」判定から除外する。
+export function isInstanceEquippedElsewhere(
   equipment: EquipmentState,
-  itemId: string,
+  instanceId: string,
   exclude?: EquipmentSlotRef
-): number {
-  let count = 0;
+): boolean {
   for (const [characterId, eq] of Object.entries(equipment)) {
     const isExcludedChar = exclude?.characterId === characterId;
-    if (eq.weapon === itemId && !(isExcludedChar && exclude!.slot === "weapon")) count++;
-    eq.artifacts.forEach((id, i) => {
-      if (id === itemId && !(isExcludedChar && exclude!.slot === i)) count++;
-    });
+    if (eq.weapon === instanceId && !(isExcludedChar && exclude!.slot === "weapon")) return true;
+    for (let i = 0; i < eq.artifacts.length; i++) {
+      if (eq.artifacts[i] === instanceId && !(isExcludedChar && exclude!.slot === i)) return true;
+    }
   }
-  return count;
+  return false;
+}
+
+// 指定した個体を今装備しているキャラクターID（いなければnull）。
+export function findEquippedOwner(equipment: EquipmentState, instanceId: string): string | null {
+  for (const [characterId, eq] of Object.entries(equipment)) {
+    if (eq.weapon === instanceId || eq.artifacts.includes(instanceId)) return characterId;
+  }
+  return null;
+}
+
+// 指定した個体を、装備している全キャラクターの装備欄から外す
+// （合成で消費される個体を装備から確実に外すために使う）。
+export function unequipInstanceEverywhere(data: Game1SaveData, instanceId: string): Game1SaveData {
+  let changed = false;
+  const equipment: EquipmentState = {};
+  for (const [characterId, eq] of Object.entries(data.equipment)) {
+    let next = eq;
+    if (next.weapon === instanceId) {
+      next = { ...next, weapon: null };
+      changed = true;
+    }
+    if (next.artifacts.includes(instanceId)) {
+      next = {
+        ...next,
+        artifacts: next.artifacts.map((id) => (id === instanceId ? null : id)) as CharacterEquipment["artifacts"],
+      };
+      changed = true;
+    }
+    equipment[characterId] = next;
+  }
+  return changed ? { ...data, equipment } : data;
 }
 
 export const MAX_PARTY_SIZE = 3;
@@ -120,24 +172,30 @@ export function investExpInCharacter(
   };
 }
 
-// アイテムドロップで入手したアイテムを所持数に加算する。同じIDが複数個渡された
-// 場合はまとめて加算し、既に持っているアイテムは数量を増やす（無ければ新規追加）。
-export function addItemsToInventory(data: Game1SaveData, itemIds: string[]): Game1SaveData {
-  if (itemIds.length === 0) return data;
-  const addCounts = new Map<string, number>();
-  for (const id of itemIds) {
-    addCounts.set(id, (addCounts.get(id) ?? 0) + 1);
-  }
-  const inventory = data.inventory.map((entry) => ({ ...entry }));
-  for (const [itemId, addQuantity] of addCounts) {
-    const existing = inventory.find((entry) => entry.itemId === itemId);
-    if (existing) {
-      existing.quantity += addQuantity;
-    } else {
-      inventory.push({ itemId, quantity: addQuantity });
+export interface AddItemsResult {
+  data: Game1SaveData;
+  acceptedCount: number;
+  rejectedCount: number;
+}
+
+// アイテムドロップで入手したアイテムを、新しい個体として所持数に加える。
+// 所持数の上限（INVENTORY_CAP）に達している分は受け取れない（rejectedCountに計上、
+// 何のアイテムだったかは呼び出し側にも渡さない——バッグ画面などで「受け取れな
+// かった」旨だけ表示し、中身は見せない仕様のため）。
+export function addItemsToInventory(data: Game1SaveData, itemIds: string[]): AddItemsResult {
+  if (itemIds.length === 0) return { data, acceptedCount: 0, rejectedCount: 0 };
+  const inventory = [...data.inventory];
+  let acceptedCount = 0;
+  let rejectedCount = 0;
+  for (const itemId of itemIds) {
+    if (inventory.length >= INVENTORY_CAP) {
+      rejectedCount++;
+      continue;
     }
+    inventory.push({ instanceId: generateInstanceId(), itemId, plus: 0 });
+    acceptedCount++;
   }
-  return { ...data, inventory };
+  return { data: { ...data, inventory }, acceptedCount, rejectedCount };
 }
 
 // 新しく仲間になったキャラクターを、編成人数が3人未満の間は自動で編成に加える
@@ -161,6 +219,7 @@ export function syncActivePartyWithUnlocks(data: Game1SaveData): Game1SaveData {
 // 正式なスタート状態：アイテムはドロップ（lib/item-drop.ts）でしか入手できないため、
 // 所持なしから始まる。
 export const defaultGame1Data: Game1SaveData = {
+  schemaVersion: SAVE_SCHEMA_VERSION,
   playCount: 0,
   inventory: [],
   equipment: {},
@@ -172,6 +231,12 @@ export const defaultGame1Data: Game1SaveData = {
 };
 
 export function loadGame1Data(): Game1SaveData {
+  // 古い構造のセーブデータ（アイテムが個体管理になる前のものなど）をそのまま読むと
+  // 表示や計算が壊れるため、保存されている生データのバージョンが一致しない場合は
+  // 初期状態にリセットする。readRawGameData()はマージをしないので、バージョン
+  // フィールド自体が無い（＝旧形式の）データも確実に検出できる。
+  const raw = readRawGameData(GAME1_ID) as { schemaVersion?: number } | null;
+  if (raw !== null && raw.schemaVersion !== SAVE_SCHEMA_VERSION) return defaultGame1Data;
   return loadGameData(GAME1_ID, defaultGame1Data);
 }
 

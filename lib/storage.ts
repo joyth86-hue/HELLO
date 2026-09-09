@@ -61,6 +61,21 @@ export function loadGameData<T>(gameId: string, defaultValue: T): T {
   return readJson(gameKey(gameId), defaultValue);
 }
 
+// 保存されている生のJSONをマージ無しでそのまま読む（存在しなければnull）。
+// readJson()は「無いキーはdefaultValueで埋める」ため、例えば新しく追加した
+// バージョン番号フィールドが古いデータに無い場合、マージ後は勝手にdefaultValue側の
+// 値で埋まってしまい「バージョンが無い＝古いデータ」だと判定できなくなる。
+// 保存データの構造そのものが変わったかどうかを判定したい場合はこちらを使う。
+export function readRawGameData(gameId: string): unknown | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(gameKey(gameId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function saveGameData<T>(gameId: string, data: T) {
   writeJson(gameKey(gameId), data);
 }

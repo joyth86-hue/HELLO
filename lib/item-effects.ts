@@ -4,25 +4,40 @@
 
 import type { ItemRarity, ItemType, ArtifactSlot } from "./items-info";
 import { getItemBaseInfo } from "./items-info";
-import type { CharacterEquipment } from "./game1-data";
+import type { CharacterEquipment, ItemInstance } from "./game1-data";
 import type { CharacterStatsAtLevel } from "./character-growth";
+import { SYNTHESIS_PLUS_STEP_PERCENT, flooredPlus } from "./item-synthesis";
 
 export type EquipmentEffectStat =
   | "hp"
   | "atk"
+  | "atkFlat"
   | "def"
   | "critRate"
   | "critDamage"
   | "elementResist"
   | "allRound";
 
-// HP/攻撃力/防御力に効く装備：そのステータスの基礎値（レベルなりの値）に対する割合加算。
+// HP/防御力、およびアーティファクト経由の攻撃力に効く装備：そのステータスの
+// 基礎値（レベルなりの値）に対する割合加算。
 export const MAGNITUDE_BONUS_PERCENT: Record<ItemRarity, number> = {
   C: 0.03,
   B: 0.06,
   A: 0.1,
   S: 0.16,
   SS: 0.25,
+};
+
+// 武器に効く攻撃力：キャラのステータスへの割合ではなく、固定値の加算
+// （ゲームデザイン上の好みとして「武器は足し算」にしたいとのユーザー指定）。
+// レベルアップでの伸び幅（例：アカネは+6.0/レベル）と比べて、装備を替えたと
+// はっきり実感できる大きさになるよう仮の値を置いている。
+export const WEAPON_FLAT_ATK_BONUS: Record<ItemRarity, number> = {
+  C: 30,
+  B: 60,
+  A: 110,
+  S: 180,
+  SS: 300,
 };
 
 // 会心率・会心ダメージ・属性耐性に効く装備：ポイント（%pt）を直接加算。
@@ -38,8 +53,8 @@ export const RATE_BONUS_POINTS: Record<ItemRarity, number> = {
 // 3つ全てに乗せる。
 const ALL_ROUND_DIVISOR = 2;
 
-// 武器種（片手剣・法器・弓）はすべて攻撃力に効く。
-const WEAPON_EFFECT_STAT: EquipmentEffectStat = "atk";
+// 武器種（片手剣・法器・弓）は固定値の攻撃力加算。
+const WEAPON_EFFECT_STAT: EquipmentEffectStat = "atkFlat";
 
 // アーティファクトのslot（装備部位）ごとの効果ステータス対応表。
 export const ARTIFACT_SLOT_EFFECT: Record<ArtifactSlot, EquipmentEffectStat> = {
@@ -60,6 +75,7 @@ export function getEffectStatForItem(type: ItemType, slot?: ArtifactSlot): Equip
 export interface EquipmentBonusTotals {
   hpPercent: number;
   atkPercent: number;
+  atkFlat: number;
   defPercent: number;
   critRatePoints: number;
   critDamagePoints: number;
@@ -69,41 +85,58 @@ export interface EquipmentBonusTotals {
 const EMPTY_BONUS: EquipmentBonusTotals = {
   hpPercent: 0,
   atkPercent: 0,
+  atkFlat: 0,
   defPercent: 0,
   critRatePoints: 0,
   critDamagePoints: 0,
   elementResistPoints: 0,
 };
 
+// 合成の＋値による上乗せ倍率（＋1につき、そのアイテム自身の元の基礎値の5%増）。
+// 端数を持つ内部値ではなく、切り捨てた整数の＋値を使う（表示上の＋Nと一致させるため）。
+function synthesisMultiplier(instance: ItemInstance): number {
+  return 1 + SYNTHESIS_PLUS_STEP_PERCENT * flooredPlus(instance);
+}
+
 // 装備中の武器＋アーティファクト3枠すべての効果を合算する。
-export function calculateEquipmentBonus(equipment: CharacterEquipment): EquipmentBonusTotals {
+// equipmentの値は所持アイテムの個体ID（instanceId）なので、inventoryを渡して
+// 実体（itemId・＋値）を解決する。
+export function calculateEquipmentBonus(
+  equipment: CharacterEquipment,
+  inventory: ItemInstance[]
+): EquipmentBonusTotals {
   const totals = { ...EMPTY_BONUS };
-  const equippedIds = [equipment.weapon, ...equipment.artifacts].filter(
+  const equippedInstanceIds = [equipment.weapon, ...equipment.artifacts].filter(
     (id): id is string => id !== null
   );
 
-  for (const id of equippedIds) {
-    const item = getItemBaseInfo(id);
+  for (const instanceId of equippedInstanceIds) {
+    const instance = inventory.find((i) => i.instanceId === instanceId);
+    if (!instance) continue;
+    const item = getItemBaseInfo(instance.itemId);
     if (!item) continue;
     const stat = getEffectStatForItem(item.type, item.slot);
+    const mul = synthesisMultiplier(instance);
 
     if (stat === "allRound") {
-      const half = MAGNITUDE_BONUS_PERCENT[item.rarity] / ALL_ROUND_DIVISOR;
+      const half = (MAGNITUDE_BONUS_PERCENT[item.rarity] / ALL_ROUND_DIVISOR) * mul;
       totals.hpPercent += half;
       totals.atkPercent += half;
       totals.defPercent += half;
     } else if (stat === "hp") {
-      totals.hpPercent += MAGNITUDE_BONUS_PERCENT[item.rarity];
+      totals.hpPercent += MAGNITUDE_BONUS_PERCENT[item.rarity] * mul;
     } else if (stat === "atk") {
-      totals.atkPercent += MAGNITUDE_BONUS_PERCENT[item.rarity];
+      totals.atkPercent += MAGNITUDE_BONUS_PERCENT[item.rarity] * mul;
+    } else if (stat === "atkFlat") {
+      totals.atkFlat += WEAPON_FLAT_ATK_BONUS[item.rarity] * mul;
     } else if (stat === "def") {
-      totals.defPercent += MAGNITUDE_BONUS_PERCENT[item.rarity];
+      totals.defPercent += MAGNITUDE_BONUS_PERCENT[item.rarity] * mul;
     } else if (stat === "critRate") {
-      totals.critRatePoints += RATE_BONUS_POINTS[item.rarity];
+      totals.critRatePoints += RATE_BONUS_POINTS[item.rarity] * mul;
     } else if (stat === "critDamage") {
-      totals.critDamagePoints += RATE_BONUS_POINTS[item.rarity];
+      totals.critDamagePoints += RATE_BONUS_POINTS[item.rarity] * mul;
     } else if (stat === "elementResist") {
-      totals.elementResistPoints += RATE_BONUS_POINTS[item.rarity];
+      totals.elementResistPoints += RATE_BONUS_POINTS[item.rarity] * mul;
     }
   }
 
@@ -116,7 +149,7 @@ export function applyEquipmentBonusToStats(
 ): CharacterStatsAtLevel {
   return {
     hp: Math.round(base.hp * (1 + bonus.hpPercent)),
-    atk: Math.round(base.atk * (1 + bonus.atkPercent)),
+    atk: Math.round(base.atk * (1 + bonus.atkPercent)) + Math.round(bonus.atkFlat),
     def: Math.round(base.def * (1 + bonus.defPercent)),
   };
 }

@@ -10,6 +10,12 @@ export type ItemType = "片手剣" | "法器" | "弓" | "アーティファク�
 export type ItemRarity = "C" | "B" | "A" | "S" | "SS";
 export type ArtifactSlot = "護符" | "指輪" | "腕輪" | "首飾り" | "耳飾り" | "ブローチ" | "帯留め";
 
+// レア度の弱い順。合成時のレア度比較（lib/item-synthesis.ts）で使う。
+export const RARITY_ORDER: ItemRarity[] = ["C", "B", "A", "S", "SS"];
+export function rarityRank(rarity: ItemRarity): number {
+  return RARITY_ORDER.indexOf(rarity);
+}
+
 export interface ItemBaseInfo {
   id: string;
   name: string;
