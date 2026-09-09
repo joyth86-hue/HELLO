@@ -15,21 +15,20 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "hiro games",
   description: "hiro games",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-  },
 };
 
-// viewportFit: "cover" で、ノッチ・ステータスバー分の領域までページの背景を
-// 描画対象に含める（iPhoneでホーム画面に追加した際などに、時計・電波・充電
-// 残量のあるエリアが背景の塗られていない帯になってしまう問題への対応）。
 // themeColorは通常のSafariタブ表示時のブラウザUI（アドレスバー等）の色を
 // アプリの背景色に合わせるためのもの。
+//
+// 以前ここに viewportFit: "cover" ＋ apple-mobile-web-app のstatusBarStyle
+// （black-translucent）を設定し、ノッチ・ステータスバー分の背景の塗り漏れ
+// に対応していたが、実機（iPhone）で「画面全体が上にずれ、下部に余白が
+// できる」という副作用が発生したため撤去した。ノッチ周りの帯（背景が塗られ
+// ていない）は、ユーザー側の判断で今は許容している（詳細はdocs/spec/
+// visual-design.mdのセーフエリア節を参照）。
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  viewportFit: "cover",
   themeColor: "#14132a",
 };
 
