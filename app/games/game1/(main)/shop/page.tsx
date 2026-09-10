@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import GameBackground from "@/components/GameBackground";
 
 // 武器ガチャ画面（演出確認版）。docs/spec/screens/shop.md参照。
@@ -35,11 +35,47 @@ function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
+// 画像を取得＆デコードまで済ませてから解決するPromise。<img src>を切り替える
+// 直前にフレームごとの取得・デコード待ちが挟まると、そこだけコマが飛んで見える
+// （実際に発生した不具合）ため、再生を始める前にまとめて済ませておく。
+function preloadImage(src: string): Promise<void> {
+  const img = new window.Image();
+  img.src = src;
+  if (typeof img.decode === "function") {
+    return img.decode().catch(() => undefined);
+  }
+  if (img.complete) return Promise.resolve();
+  return new Promise((resolve) => {
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+  });
+}
+
 export default function ShopPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [rarity, setRarity] = useState<Rarity>("C");
   const [frame, setFrame] = useState(0);
   const playingRef = useRef(false);
+  // レア度ごとの全フレームの先読み結果（一度読み終わっていれば再利用する）。
+  const preloadedRef = useRef<Partial<Record<Rarity, Promise<void[]>>>>({});
+
+  function preloadRarity(r: Rarity): Promise<void[]> {
+    let promise = preloadedRef.current[r];
+    if (!promise) {
+      promise = Promise.all(
+        Array.from({ length: FRAME_COUNT }, (_, i) => preloadImage(framePath(r, i)))
+      );
+      preloadedRef.current[r] = promise;
+    }
+    return promise;
+  }
+
+  useEffect(() => {
+    // 初回表示時に全レア度分を先読みしておき、実際にタップした時点で
+    // ほぼ確実にキャッシュ済みの状態にする。
+    for (const r of RARITIES) preloadRarity(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function openChest() {
     if (playingRef.current) return;
@@ -47,6 +83,7 @@ export default function ShopPage() {
 
     const picked = RARITIES[Math.floor(Math.random() * RARITIES.length)];
     setRarity(picked);
+    await preloadRarity(picked);
     setPhase("playing");
 
     for (let i = 0; i < FRAME_COUNT; i++) {
