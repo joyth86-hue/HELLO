@@ -45,6 +45,17 @@ import {
 const BATTLES_PER_STAGE = 10;
 const NORMAL_ENEMY_COUNT = 3;
 
+// HPゲージの色。割合に応じて緑→黄→赤に変える（残量が一目で分かるようにするため）。
+const HP_BAR_COLOR_HIGH = "#5be08a"; // 50%より上：緑
+const HP_BAR_COLOR_MID = "#ffc25c"; // 20〜50%：黄
+const HP_BAR_COLOR_LOW = "#ff6b6b"; // 20%以下：赤
+
+function hpBarColor(ratio: number): string {
+  if (ratio <= 0.2) return HP_BAR_COLOR_LOW;
+  if (ratio <= 0.5) return HP_BAR_COLOR_MID;
+  return HP_BAR_COLOR_HIGH;
+}
+
 // 左右対称の配置。Artifactで検討したモックアップ（top 42/55/68%, 幅16%）と同じ値。
 const SLOT_POSITIONS = [
   { top: "42%", z: 3 },
@@ -629,8 +640,17 @@ export default function BattlePage() {
                 draggable={false}
               />
             </div>
-            <div className="mt-1 w-full rounded-full bg-black/55 px-1 py-0.5 text-center text-[9px] font-bold text-white">
-              {unit.name} {unit.hp}/{unit.maxHp}
+            {/* HPは実数値（unit.hp/unit.maxHp）を内部で保持しつつ、表示はゲージの
+                長さだけで表現する（名前・数値表示の枠がキャラと重なって見づらかった
+                ため撤去、ユーザー確認済み）。 */}
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/55">
+              <div
+                className="h-full rounded-full transition-[width] duration-300 ease-out"
+                style={{
+                  width: `${Math.max(0, Math.min(100, (unit.hp / unit.maxHp) * 100))}%`,
+                  backgroundColor: hpBarColor(unit.hp / unit.maxHp),
+                }}
+              />
             </div>
           </div>
         );
