@@ -3,6 +3,8 @@
 
 import { loadGameData, saveGameData, readRawGameData } from "./storage";
 import { levelFromInvestedExp } from "./character-growth";
+import { rollWeaponSubstat, type WeaponSubstatKind } from "./item-substat";
+import { SKILL_POINT_COST_PER_STEP } from "./skill-progression";
 
 // アイテムの所持数上限（個体数ベース）。超えるドロップは受け取れない。
 export const INVENTORY_CAP = 100;
@@ -15,6 +17,10 @@ export interface ItemInstance {
   // 合成による強化値。内部では端数（小数）まで正確に保持し、実際の効果・表示には
   // 切り捨てた整数値を使う（lib/item-synthesis.tsのflooredPlus参照）。
   plus: number;
+  // 武器のみ：ドロップ時に1回だけ決まるランダムな追加能力枠。合成の強化対象外で
+  // その個体が存在する限りずっと固定（lib/item-substat.ts参照）。
+  substatStat?: WeaponSubstatKind;
+  substatValue?: number;
 }
 
 function generateInstanceId(): string {
@@ -35,7 +41,7 @@ export type EquipmentState = Record<string, CharacterEquipment>;
 
 // セーブデータの構造を変える際にインクリメントする。読み込み時にこれと一致しない
 // （＝古い構造の）データは初期状態として扱う（詳細はloadGame1Data参照）。
-export const SAVE_SCHEMA_VERSION = 2;
+export const SAVE_SCHEMA_VERSION = 3;
 
 export interface Game1SaveData {
   schemaVersion: number;
@@ -53,6 +59,13 @@ export interface Game1SaveData {
   // レベルはここから逆算する（lib/character-growth.tsのlevelFromInvestedExp）。
   // キー自体が無いキャラは0（＝レベル1）として扱う。
   characterInvestedExp: Record<string, number>;
+  // まだスキルに割り振っていないスキルポイント。経験値ポイントとは別の資源で、
+  // ステージ「クリア」時のみ固定量が加算される（全滅時の部分回収の対象外、
+  // ステージが進んでも金額は変わらない点が経験値との違い。詳細はlib/skill-progression.ts参照）。
+  skillPoints: number;
+  // スキルID → これまでに投入したスキルポイントの累計。
+  // 解放状況・強化段階（＋N）はここから逆算する（lib/skill-progression.ts参照）。
+  skillInvestedPoints: Record<string, number>;
   // テストプレイ用の全解放モード。詳細はlib/test-mode.ts参照。
   testMode: boolean;
 }
@@ -172,6 +185,18 @@ export function investExpInCharacter(
   };
 }
 
+// 未振り分けのスキルポイントから、ちょうど1段階分（SKILL_POINT_COST_PER_STEP）を
+// 指定したスキルに投入する。足りない場合は何もしない。
+export function investSkillPoints(data: Game1SaveData, skillId: string): Game1SaveData {
+  if (data.skillPoints < SKILL_POINT_COST_PER_STEP) return data;
+  const current = data.skillInvestedPoints[skillId] ?? 0;
+  return {
+    ...data,
+    skillPoints: data.skillPoints - SKILL_POINT_COST_PER_STEP,
+    skillInvestedPoints: { ...data.skillInvestedPoints, [skillId]: current + SKILL_POINT_COST_PER_STEP },
+  };
+}
+
 export interface AddItemsResult {
   data: Game1SaveData;
   acceptedCount: number;
@@ -192,7 +217,13 @@ export function addItemsToInventory(data: Game1SaveData, itemIds: string[]): Add
       rejectedCount++;
       continue;
     }
-    inventory.push({ instanceId: generateInstanceId(), itemId, plus: 0 });
+    const substat = rollWeaponSubstat(itemId);
+    inventory.push({
+      instanceId: generateInstanceId(),
+      itemId,
+      plus: 0,
+      ...(substat ? { substatStat: substat.stat, substatValue: substat.value } : {}),
+    });
     acceptedCount++;
   }
   return { data: { ...data, inventory }, acceptedCount, rejectedCount };
@@ -227,6 +258,8 @@ export const defaultGame1Data: Game1SaveData = {
   activePartyIds: ["c01"],
   expPoints: 0,
   characterInvestedExp: {},
+  skillPoints: 0,
+  skillInvestedPoints: {},
   testMode: false,
 };
 

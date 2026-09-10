@@ -2,8 +2,8 @@
 // docs/spec/items.mdの「今後」に挙がっていた効果値を、ユーザー確認済みの仮の
 // 対応表・数値で埋めたもの。すべて後から係数を書き換えるだけで調整できる。
 
-import type { ItemRarity, ItemType, ArtifactSlot } from "./items-info";
-import { getItemBaseInfo } from "./items-info";
+import type { ItemBaseInfo, ItemRarity, ItemType, ArtifactSlot } from "./items-info";
+import { getItemBaseInfo, ITEM_BASE_INFO } from "./items-info";
 import type { CharacterEquipment, ItemInstance } from "./game1-data";
 import type { CharacterStatsAtLevel } from "./character-growth";
 import { SYNTHESIS_PLUS_STEP_PERCENT, flooredPlus } from "./item-synthesis";
@@ -32,13 +32,29 @@ export const MAGNITUDE_BONUS_PERCENT: Record<ItemRarity, number> = {
 // （ゲームデザイン上の好みとして「武器は足し算」にしたいとのユーザー指定）。
 // レベルアップでの伸び幅（例：アカネは+6.0/レベル）と比べて、装備を替えたと
 // はっきり実感できる大きさになるよう仮の値を置いている。
-export const WEAPON_FLAT_ATK_BONUS: Record<ItemRarity, number> = {
-  C: 30,
-  B: 60,
-  A: 110,
-  S: 180,
-  SS: 300,
+// 同じレア度でも武器5種類にばらつきを持たせる（ユーザー確認済み）：中心値の
+// ±15%程度の幅を5段階に均等配分し、レア度＋種類（片手剣/法器/弓）ブロック内で
+// ID順（昇順）に低い値から高い値を割り当てる。
+export const WEAPON_FLAT_ATK_RANGE: Record<ItemRarity, [number, number, number, number, number]> = {
+  C: [26, 28, 30, 32, 34],
+  B: [51, 55, 60, 65, 69],
+  A: [94, 102, 110, 118, 126],
+  S: [153, 166, 180, 194, 207],
+  SS: [255, 277, 300, 322, 345],
 };
+
+// 同じ種類・同じレア度の武器グループ内で、そのアイテムが何番目か（0-4）を返す。
+function weaponVarianceIndex(item: ItemBaseInfo): number {
+  const siblings = ITEM_BASE_INFO.filter((i) => i.type === item.type && i.rarity === item.rarity).sort(
+    (a, b) => a.id.localeCompare(b.id)
+  );
+  const index = siblings.findIndex((i) => i.id === item.id);
+  return index < 0 ? 2 : index; // 見つからない場合は中央値にフォールバック
+}
+
+export function weaponFlatAtkForItem(item: ItemBaseInfo): number {
+  return WEAPON_FLAT_ATK_RANGE[item.rarity][weaponVarianceIndex(item)];
+}
 
 // 会心率・会心ダメージ・属性耐性に効く装備：ポイント（%pt）を直接加算。
 export const RATE_BONUS_POINTS: Record<ItemRarity, number> = {
@@ -128,7 +144,7 @@ export function calculateEquipmentBonus(
     } else if (stat === "atk") {
       totals.atkPercent += MAGNITUDE_BONUS_PERCENT[item.rarity] * mul;
     } else if (stat === "atkFlat") {
-      totals.atkFlat += WEAPON_FLAT_ATK_BONUS[item.rarity] * mul;
+      totals.atkFlat += weaponFlatAtkForItem(item) * mul;
     } else if (stat === "def") {
       totals.defPercent += MAGNITUDE_BONUS_PERCENT[item.rarity] * mul;
     } else if (stat === "critRate") {
@@ -137,6 +153,25 @@ export function calculateEquipmentBonus(
       totals.critDamagePoints += RATE_BONUS_POINTS[item.rarity] * mul;
     } else if (stat === "elementResist") {
       totals.elementResistPoints += RATE_BONUS_POINTS[item.rarity] * mul;
+    }
+
+    // 武器のランダム個体差（追加能力枠）：ドロップ時に固定される値なので、
+    // 合成の＋値強化（synthesisMultiplier）は適用しない。
+    if (instance.substatStat && instance.substatValue !== undefined) {
+      const value = instance.substatValue;
+      if (instance.substatStat === "hp") {
+        totals.hpPercent += value / 100;
+      } else if (instance.substatStat === "atk") {
+        totals.atkPercent += value / 100;
+      } else if (instance.substatStat === "def") {
+        totals.defPercent += value / 100;
+      } else if (instance.substatStat === "critRate") {
+        totals.critRatePoints += value;
+      } else if (instance.substatStat === "critDamage") {
+        totals.critDamagePoints += value;
+      } else if (instance.substatStat === "elementResist") {
+        totals.elementResistPoints += value;
+      }
     }
   }
 

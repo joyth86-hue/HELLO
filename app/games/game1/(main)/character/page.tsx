@@ -12,6 +12,7 @@ import {
   getItemInstance,
   getUnlockedCharacterIds,
   investExpInCharacter,
+  investSkillPoints,
   isInstanceEquippedElsewhere,
   loadGame1Data,
   saveGame1Data,
@@ -30,6 +31,13 @@ import {
 } from "@/lib/item-synthesis";
 import { getEffectiveGame1Data } from "@/lib/test-mode";
 import { getItemBaseInfo, type ItemBaseInfo } from "@/lib/items-info";
+import { getCharacterSkillKit } from "@/lib/skills-info";
+import {
+  isSkillUnlocked,
+  pointsToNextStep,
+  skillPlusLevel,
+  SKILL_POINT_COST_PER_STEP,
+} from "@/lib/skill-progression";
 import GameBackground from "@/components/GameBackground";
 import TestModeBadge from "@/components/TestModeBadge";
 
@@ -176,6 +184,8 @@ export default function CharacterViewPage() {
   const [showTrainSheet, setShowTrainSheet] = useState(false);
   const [trainInput, setTrainInput] = useState("");
   const [trainMessage, setTrainMessage] = useState<string | null>(null);
+  const [showSkillSheet, setShowSkillSheet] = useState(false);
+  const [skillMessage, setSkillMessage] = useState<string | null>(null);
   const [showSynthesis, setShowSynthesis] = useState(false);
   const [synthesisTargetId, setSynthesisTargetId] = useState<string | null>(null);
   const [synthesisMaterialIds, setSynthesisMaterialIds] = useState<string[]>([]);
@@ -214,6 +224,7 @@ export default function CharacterViewPage() {
   const baseStats = getCharacterStatsAtLevel(currentId, level);
 
   const currentEquipment = saveData ? getCharacterEquipment(saveData, currentId) : EMPTY_EQUIPMENT;
+  const currentSkillKit = getCharacterSkillKit(currentId);
 
   function resolveEquipped(instanceId: string | null) {
     if (!saveData || !instanceId) return undefined;
@@ -383,6 +394,23 @@ export default function CharacterViewPage() {
         ? `Lv${beforeLevel} → Lv${afterLevel} になりました`
         : `${amount}pt投入しました（レベルは変わらず）`
     );
+  }
+
+  function openSkillSheet() {
+    setSkillMessage(null);
+    setShowSkillSheet(true);
+  }
+
+  function submitSkillInvest(skillId: string, wasUnlocked: boolean) {
+    if (!saveData) return;
+    if (saveData.skillPoints < SKILL_POINT_COST_PER_STEP) {
+      setSkillMessage("スキルポイントが足りません");
+      return;
+    }
+    const next = investSkillPoints(saveData, skillId);
+    saveGame1Data(next);
+    setSaveData(next);
+    setSkillMessage(wasUnlocked ? "強化しました" : "解放しました");
   }
 
   function updateEquipment(next: CharacterEquipment) {
@@ -588,6 +616,16 @@ export default function CharacterViewPage() {
             <span className="font-bold">合成</span>
             <span className="text-[11px] text-[#b8b3d9]">武器・アーティファクトを強化</span>
           </button>
+
+          <button
+            onClick={openSkillSheet}
+            className="mt-2 flex w-full items-center justify-between rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2 text-sm text-[#eee9ff] backdrop-blur-sm"
+          >
+            <span className="font-bold">スキル</span>
+            <span className="text-[11px] text-[#b8b3d9]">
+              スキルポイント {(saveData?.skillPoints ?? 0).toLocaleString()}pt
+            </span>
+          </button>
         </div>
       </div>
 
@@ -682,6 +720,69 @@ export default function CharacterViewPage() {
                 決定
               </button>
             </div>
+          </div>
+        </>
+      )}
+
+      {showSkillSheet && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/45"
+            onClick={() => setShowSkillSheet(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-x-0 bottom-0 z-[61] max-h-[80vh] overflow-y-auto rounded-t-2xl border-t-2 border-black bg-[#fffaf0] p-4 pb-6">
+            <p className="mb-1 font-bold text-black">{currentBaseInfo?.name ?? ""}のスキル</p>
+            <p className="mb-3 text-xs text-zinc-500">
+              スキルポイント{SKILL_POINT_COST_PER_STEP}ptで解放・強化ができます。所持：
+              {(saveData?.skillPoints ?? 0).toLocaleString()}pt
+            </p>
+            <div className="flex flex-col gap-2">
+              {currentSkillKit.map((skill) => {
+                const invested = saveData?.skillInvestedPoints[skill.id] ?? 0;
+                const unlocked = isSkillUnlocked(skill.id, invested);
+                const plus = skillPlusLevel(skill.id, invested);
+                const remainingToNext = pointsToNextStep(skill.id, invested);
+                const canInvest = (saveData?.skillPoints ?? 0) >= SKILL_POINT_COST_PER_STEP;
+                return (
+                  <div
+                    key={skill.id}
+                    className="flex items-center gap-3 rounded-xl border-2 border-zinc-300 bg-white p-2"
+                  >
+                    <img
+                      src={skill.icon}
+                      alt={skill.name}
+                      className="h-12 w-12 flex-shrink-0 rounded-lg object-contain"
+                      style={{ opacity: unlocked ? 1 : 0.4 }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-black">
+                        {skill.name}
+                        {unlocked ? `　+${plus}` : "　未解放"}
+                      </p>
+                      <p className="truncate text-[11px] text-zinc-500">{skill.description}</p>
+                    </div>
+                    <button
+                      onClick={() => submitSkillInvest(skill.id, unlocked)}
+                      disabled={!canInvest}
+                      className="flex-shrink-0 rounded-full border-2 border-black bg-[#c9c3ff] px-3 py-1.5 text-xs font-bold text-black disabled:opacity-40"
+                    >
+                      {unlocked ? "強化" : "解放"}
+                      <span className="ml-1 text-[10px] font-medium">
+                        ({remainingToNext}pt)
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            {skillMessage && <p className="mt-3 text-xs font-bold text-[#4a3f86]">{skillMessage}</p>}
+            <button
+              onClick={() => setShowSkillSheet(false)}
+              className="mt-4 w-full rounded-full border-2 border-zinc-300 py-2 text-sm font-bold text-zinc-600"
+            >
+              閉じる
+            </button>
           </div>
         </>
       )}

@@ -2,7 +2,9 @@
 // 「2. ダメージ計算式（案）」）。
 //
 // 属性相性表はまだ未定のため、属性倍率は一旦なし（常に×1.0固定）としている
-// （ユーザー確認済み）。表が決まり次第、ここに組み込む。
+// （ユーザー確認済み）。表が決まり次第getElementMultiplierの中身だけ差し替える。
+
+import type { SkillElement } from "./skills-info";
 
 // 基礎会心率（装備なし）。装備（アーティファクト）の会心率上昇はcritRateBonusとして
 // 呼び出し側（lib/item-effects.ts）から加算される。
@@ -15,15 +17,29 @@ export interface DamageResult {
   isCrit: boolean;
 }
 
+// 属性相性倍率。相性表が決まるまでは常に1.0固定（ユーザー確認済み）。
+// 通常攻撃は属性を持たない（attackerElement=null）ため、常にこの1.0固定ルートを通る。
+export function getElementMultiplier(
+  _attackerElement: SkillElement,
+  _defenderElement: SkillElement
+): number {
+  return 1.0;
+}
+
 export function calculateDamage(
   attackerAtk: number,
   targetDef: number,
   critRateBonus = 0,
-  critDamageBonus = 0
+  critDamageBonus = 0,
+  skillBaseValue = 0,
+  attackerElement: SkillElement = null,
+  defenderElement: SkillElement = null
 ): DamageResult {
-  const base = (attackerAtk * 100) / (100 + targetDef);
+  const effectiveAtk = attackerAtk + skillBaseValue;
+  const base = (effectiveAtk * 100) / (100 + targetDef);
+  const elementMultiplier = getElementMultiplier(attackerElement, defenderElement);
   const isCrit = Math.random() < BASE_CRIT_RATE + critRateBonus;
-  const multiplier = isCrit ? CRIT_DAMAGE_MULTIPLIER + critDamageBonus : 1;
-  const damage = Math.max(1, Math.round(base * multiplier));
+  const critMultiplier = isCrit ? CRIT_DAMAGE_MULTIPLIER + critDamageBonus : 1;
+  const damage = Math.max(1, Math.round(base * elementMultiplier * critMultiplier));
   return { damage, isCrit };
 }

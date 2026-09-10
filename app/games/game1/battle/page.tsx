@@ -22,7 +22,18 @@ import {
 import { calculateEquipmentBonus, applyEquipmentBonusToStats } from "@/lib/item-effects";
 import { rollDropForBattle, type DroppedItem } from "@/lib/item-drop";
 import { getItemBaseInfo, type ItemBaseInfo } from "@/lib/items-info";
-import { getCharacterSkillKit } from "@/lib/skills-info";
+import { SYNTHESIS_PLUS_STEP_PERCENT } from "@/lib/item-synthesis";
+import {
+  getCharacterSkillKit,
+  type BuffStat,
+  type SkillBaseInfo,
+  type SkillElement,
+} from "@/lib/skills-info";
+import {
+  isSkillUnlocked,
+  skillPlusLevel,
+  SKILL_POINTS_PER_STAGE_CLEAR,
+} from "@/lib/skill-progression";
 
 // 本実装のステージ内10バトル連戦（S-1〜S-10）。詳細はdocs/spec/screens/battle.md参照。
 // ステージ選択画面（/games/game1/stages）からは ?stage=N 付きで遷移してくる。
@@ -30,7 +41,7 @@ import { getCharacterSkillKit } from "@/lib/skills-info";
 // 1ステージ＝10バトル連戦。S-1〜S-9は敵3体、S-10（ボス）は敵1体。HPは連戦中
 // ずっと持ち越し（S-1開始時に全回復）。全滅したらそのステージは未クリアの
 // まま、経験値も加算されない。S-10のボスを倒すとステージクリアとなり、
-// 貯まった経験値ポイントとmaxClearedStageをまとめて保存する。
+// 貯まった経験値ポイント・スキルポイントとmaxClearedStageをまとめて保存する。
 const BATTLES_PER_STAGE = 10;
 const NORMAL_ENEMY_COUNT = 3;
 
@@ -44,7 +55,15 @@ const SLOT_POSITIONS = [
 const BOSS_SLOT_INDEX = 1;
 
 type Pose = "idle" | "attack" | "damage";
-type DamagePhase = "hidden" | "in" | "visible" | "out";
+type PopupPhase = "hidden" | "in" | "visible" | "out";
+type PopupKind = "damage" | "heal";
+
+interface ActiveBuff {
+  stat: BuffStat;
+  percentOrPoints: number;
+  // このバフを受けた側の「自分の手番」が何回目に達したら切れるか（含む）。
+  expiresAtOwnTurn: number;
+}
 
 interface BattleUnit {
   key: string; // "ally-0" 等、表示スロットに紐づく一意キー
@@ -62,10 +81,22 @@ interface BattleUnit {
   alive: boolean;
   pose: Pose;
   stepped: boolean;
-  damagePhase: DamagePhase;
-  lastDamage: number;
-  lastCrit: boolean;
+  popupPhase: PopupPhase;
+  popupKind: PopupKind;
+  popupValue: number;
+  popupCrit: boolean;
+  // CT（スキルのクールタイム）は「自分の手番が何回回ってきたか」で数える
+  // （グローバルなターン数ではない）。ステージ内の10連戦をまたいで持ち越し、
+  // ステージ開始（S-1）時のみリセットされる（HPの持ち越しと同じ扱い）。
+  ownTurnCounter: number;
+  // skillId -> 「自分の手番カウンターがこの値を超えたら使用可能」になる閾値。
+  skillAvailableAtTurn: Record<string, number>;
+  buffs: ActiveBuff[];
+  // 妨害効果（お静かに／蔦縛りの矢）を受けている場合、次の自分の手番を1回失う。
+  skipNextTurn: boolean;
 }
+
+type PlayerAction = { type: "normal" } | { type: "skill"; skill: SkillBaseInfo; plusLevel: number };
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -80,6 +111,13 @@ function poseAsset(unit: BattleUnit): string {
   if (unit.pose === "attack") return assets.battleAttack;
   if (unit.pose === "damage") return assets.battleDamage;
   return assets.battleIdle;
+}
+
+// 敵の属性（スキルの属性相性計算用）。表が決まるまでは実際には常に×1.0だが、
+// 計算式には組み込んでおく。
+function enemyElement(id: string): SkillElement {
+  const element = getEnemyBaseInfo(id)?.element;
+  return (element as SkillElement) ?? null;
 }
 
 function buildAllyUnits(partyIds: string[], saveData: Game1SaveData): BattleUnit[] {
@@ -104,9 +142,14 @@ function buildAllyUnits(partyIds: string[], saveData: Game1SaveData): BattleUnit
       alive: true,
       pose: "idle",
       stepped: false,
-      damagePhase: "hidden",
-      lastDamage: 0,
-      lastCrit: false,
+      popupPhase: "hidden",
+      popupKind: "damage",
+      popupValue: 0,
+      popupCrit: false,
+      ownTurnCounter: 0,
+      skillAvailableAtTurn: {},
+      buffs: [],
+      skipNextTurn: false,
     };
   });
 }
@@ -132,9 +175,14 @@ function buildEnemyUnits(stage: number, isBoss: boolean): BattleUnit[] {
       alive: true,
       pose: "idle",
       stepped: false,
-      damagePhase: "hidden",
-      lastDamage: 0,
-      lastCrit: false,
+      popupPhase: "hidden",
+      popupKind: "damage",
+      popupValue: 0,
+      popupCrit: false,
+      ownTurnCounter: 0,
+      skillAvailableAtTurn: {},
+      buffs: [],
+      skipNextTurn: false,
     };
   });
 }
@@ -149,6 +197,7 @@ export default function BattlePage() {
   const [stageLabel, setStageLabel] = useState(1);
   const [subBattleLabel, setSubBattleLabel] = useState(1);
   const [expEarned, setExpEarned] = useState(0);
+  const [skillPointsEarned, setSkillPointsEarned] = useState(0);
   const [droppedItemSummary, setDroppedItemSummary] = useState<
     { item: ItemBaseInfo; quantity: number }[]
   >([]);
@@ -156,8 +205,11 @@ export default function BattlePage() {
 
   const unitsRef = useRef<BattleUnit[]>([]);
   const startedRef = useRef(false);
-  const resolvePlayerActionRef = useRef<(() => void) | null>(null);
+  const resolvePlayerActionRef = useRef<((action: PlayerAction) => void) | null>(null);
   const stageNumberRef = useRef(1);
+  // スキルの解放状況（skillId -> 投資済pt）はステージ中は変化しない
+  // （スキルポイントの消費はキャラ育成画面側の操作のため）。
+  const skillInvestedPointsRef = useRef<Record<string, number>>({});
 
   function sync() {
     setUnits(unitsRef.current.map((u) => ({ ...u })));
@@ -172,14 +224,66 @@ export default function BattlePage() {
     return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
-  async function performAttack(attackerKey: string, targetKey: string) {
+  function mostWoundedAlly(): BattleUnit | undefined {
+    const candidates = unitsRef.current.filter((u) => u.side === "ally" && u.alive);
+    if (candidates.length === 0) return undefined;
+    return candidates.reduce((worst, u) => (u.hp / u.maxHp < worst.hp / worst.maxHp ? u : worst));
+  }
+
+  function sumBuffFraction(unit: BattleUnit, stat: BuffStat): number {
+    return unit.buffs
+      .filter((b) => b.stat === stat)
+      .reduce((sum, b) => sum + b.percentOrPoints / 100, 0);
+  }
+
+  async function showPopup(
+    unitKey: string,
+    popup: { kind: PopupKind; value: number; crit?: boolean }
+  ) {
+    const unit = getUnit(unitKey);
+    if (popup.kind === "damage") unit.pose = "damage";
+    unit.popupKind = popup.kind;
+    unit.popupValue = popup.value;
+    unit.popupCrit = popup.crit ?? false;
+    unit.popupPhase = "in";
+    sync();
+    // requestAnimationFrameはタブが非表示（バックグラウンド）だと発火しないため、
+    // CSSトランジションの開始待ちにはsetTimeoutベースのwait()を使う。
+    await wait(20);
+    unit.popupPhase = "visible";
+    sync();
+    await wait(500);
+    unit.popupPhase = "out";
+    sync();
+    await wait(150);
+    unit.popupPhase = "hidden";
+    if (popup.kind === "damage") unit.pose = "idle";
+    sync();
+  }
+
+  // 通常攻撃・スキル攻撃共通の1発分の処理。skillBaseValueは通常攻撃なら0、
+  // elementは通常攻撃ならnull（通常攻撃は属性を持たない、ユーザー確認済み）。
+  async function resolveHit(
+    attackerKey: string,
+    targetKey: string,
+    skillBaseValue: number,
+    element: SkillElement
+  ) {
     const attacker = getUnit(attackerKey);
     const target = getUnit(targetKey);
+
+    const effectiveAtk = Math.round(attacker.atk * (1 + sumBuffFraction(attacker, "atk")));
+    const effectiveDef = Math.round(target.def * (1 + sumBuffFraction(target, "def")));
+    const defenderElement = target.side === "enemy" ? enemyElement(target.id) : null;
+
     const { damage, isCrit } = calculateDamage(
-      attacker.atk,
-      target.def,
-      attacker.critRateBonus,
-      attacker.critDamageBonus
+      effectiveAtk,
+      effectiveDef,
+      attacker.critRateBonus + sumBuffFraction(attacker, "critRate"),
+      attacker.critDamageBonus,
+      skillBaseValue,
+      element,
+      defenderElement
     );
 
     attacker.stepped = true;
@@ -191,24 +295,8 @@ export default function BattlePage() {
     await wait(300);
 
     target.hp = Math.max(0, target.hp - damage);
-    target.pose = "damage";
-    target.damagePhase = "in";
-    target.lastDamage = damage;
-    target.lastCrit = isCrit;
-    sync();
-    // requestAnimationFrameはタブが非表示（バックグラウンド）だと発火しないため、
-    // CSSトランジションの開始待ちにはsetTimeoutベースのwait()を使う。
-    await wait(20);
-    target.damagePhase = "visible";
-    sync();
-    await wait(500);
-    target.damagePhase = "out";
-    sync();
-    await wait(150);
-    target.damagePhase = "hidden";
     target.alive = target.hp > 0;
-    target.pose = "idle";
-    sync();
+    await showPopup(targetKey, { kind: "damage", value: damage, crit: isCrit });
 
     attacker.pose = "idle";
     sync();
@@ -216,6 +304,66 @@ export default function BattlePage() {
     attacker.stepped = false;
     sync();
     await wait(300);
+  }
+
+  // スキルの発動（攻撃／支援／回復）。CTのセットもここで行う。
+  async function performSkillAction(attackerKey: string, skill: SkillBaseInfo, plusLevel: number) {
+    const attacker = getUnit(attackerKey);
+    if (skill.ct > 0) {
+      attacker.skillAvailableAtTurn[skill.id] = attacker.ownTurnCounter + skill.ct;
+    }
+
+    // 合成・装備の＋値と同じ式：＋1につき元の基礎値の5%増（lib/item-synthesis.ts参照）。
+    const scaledBaseValue = skill.baseValue
+      ? Math.round(skill.baseValue * (1 + SYNTHESIS_PLUS_STEP_PERCENT * plusLevel))
+      : 0;
+
+    if (skill.kind === "攻撃") {
+      const targets: BattleUnit[] =
+        skill.target === "敵全体"
+          ? unitsRef.current.filter((u) => u.side === "enemy" && u.alive)
+          : (() => {
+              const t = randomAliveTarget("enemy");
+              return t ? [t] : [];
+            })();
+
+      for (const targetRef of targets) {
+        for (let hit = 0; hit < skill.hits; hit++) {
+          const current = getUnit(targetRef.key);
+          if (!current.alive) break;
+          await resolveHit(attackerKey, current.key, scaledBaseValue, skill.element);
+          if (skill.effect?.skipNextTurn) {
+            current.skipNextTurn = true;
+          }
+        }
+      }
+      return;
+    }
+
+    attacker.pose = "attack";
+    sync();
+    await wait(300);
+
+    if (skill.kind === "回復" && skill.effect?.healPercent) {
+      const target = mostWoundedAlly();
+      if (target) {
+        const healAmount = Math.round((target.maxHp * skill.effect.healPercent) / 100);
+        target.hp = Math.min(target.maxHp, target.hp + healAmount);
+        await showPopup(target.key, { kind: "heal", value: healAmount });
+      }
+    } else if (skill.kind === "支援" && skill.effect?.buff) {
+      const { stat, percentOrPoints, turns } = skill.effect.buff;
+      for (const ally of unitsRef.current.filter((u) => u.side === "ally" && u.alive)) {
+        ally.buffs.push({ stat, percentOrPoints, expiresAtOwnTurn: ally.ownTurnCounter + turns });
+      }
+      setTurnMessage(`${attacker.name}の${skill.name}！`);
+      sync();
+      await wait(500);
+    }
+
+    attacker.pose = "idle";
+    sync();
+    await wait(200);
   }
 
   // 1回分のバトル（S-s）を、決着がつくまで進める。
@@ -239,43 +387,76 @@ export default function BattlePage() {
       const unit = getUnit(key);
       if (!unit.alive) continue;
 
-      setActiveKey(key);
-      setTurnMessage(`${unit.name}のターン`);
-
       if (unit.side === "enemy") {
+        setActiveKey(key);
+        if (unit.skipNextTurn) {
+          unit.skipNextTurn = false;
+          setTurnMessage(`${unit.name}は動けない！`);
+          sync();
+          await wait(700);
+          continue;
+        }
+        setTurnMessage(`${unit.name}のターン`);
         await wait(400);
         const target = randomAliveTarget("ally");
-        await performAttack(unit.key, target.key);
+        if (target) await resolveHit(unit.key, target.key, 0, null);
         continue;
       }
 
-      // 仲間のターン：通常攻撃ボタンが押されるまで待つ
+      // 仲間の手番カウンターを進める（CT・バフの残りターンはこれを基準に数える）。
+      unit.ownTurnCounter += 1;
+      unit.buffs = unit.buffs.filter((b) => unit.ownTurnCounter <= b.expiresAtOwnTurn);
+      sync();
+
+      setActiveKey(key);
+      setTurnMessage(`${unit.name}のターン`);
+
+      if (unit.skipNextTurn) {
+        unit.skipNextTurn = false;
+        setTurnMessage(`${unit.name}は動けない！`);
+        sync();
+        await wait(700);
+        continue;
+      }
+
+      // 仲間のターン：通常攻撃またはスキルが選ばれるまで待つ
       setAwaitingPlayer(true);
-      await new Promise<void>((resolve) => {
+      const action = await new Promise<PlayerAction>((resolve) => {
         resolvePlayerActionRef.current = resolve;
       });
       setAwaitingPlayer(false);
 
-      const target = randomAliveTarget("enemy");
-      if (target) {
-        await performAttack(unit.key, target.key);
+      if (action.type === "normal") {
+        const target = randomAliveTarget("enemy");
+        if (target) await resolveHit(unit.key, target.key, 0, null);
+      } else {
+        await performSkillAction(unit.key, action.skill, action.plusLevel);
       }
     }
   }
 
-  // 稼いだ経験値・ドロップ品を実際のセーブデータへ反映し、クリア画面用の表示状態を整える。
-  // 全滅時も「そこまでに倒した敵の分」は持ち帰れる（maxClearedStageだけは更新しない）。
+  // 稼いだ経験値・スキルポイント・ドロップ品を実際のセーブデータへ反映し、
+  // クリア画面用の表示状態を整える。
+  // 全滅時も「そこまでに倒した敵の分」の経験値は持ち帰れる（maxClearedStageは
+  // 更新しない）。スキルポイントは経験値と違い、ステージクリア時のみ固定量が
+  // 加算される（ユーザー確認済み：難易度が上がっても増減しない）。
   function commitRewards(totalExp: number, droppedItems: DroppedItem[], stage: number, cleared: boolean) {
     const data = loadGame1Data();
     let next: Game1SaveData = {
       ...data,
       expPoints: data.expPoints + totalExp,
-      ...(cleared ? { maxClearedStage: Math.max(data.maxClearedStage, stage) } : {}),
+      ...(cleared
+        ? {
+            maxClearedStage: Math.max(data.maxClearedStage, stage),
+            skillPoints: data.skillPoints + SKILL_POINTS_PER_STAGE_CLEAR,
+          }
+        : {}),
     };
     const addResult = addItemsToInventory(next, droppedItems.map((d) => d.itemId));
     next = addResult.data;
     saveGame1Data(next);
     setExpEarned(totalExp);
+    setSkillPointsEarned(cleared ? SKILL_POINTS_PER_STAGE_CLEAR : 0);
     setBagFullCount(addResult.rejectedCount);
 
     // 所持数上限で受け取れなかった分は一覧から除く（中身を見せない仕様のため、
@@ -357,22 +538,31 @@ export default function BattlePage() {
       router.push("/games/game1/home");
       return;
     }
+    skillInvestedPointsRef.current = saveData.skillInvestedPoints;
     playStage(resolvedStage, saveData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!result) return;
-    // 獲得報酬（経験値・ドロップ）がある場合は読む時間を少し長めに取る。
-    const delay = expEarned > 0 || droppedItemSummary.length > 0 || bagFullCount > 0 ? 3000 : 1800;
+    // 獲得報酬（経験値・スキルポイント・ドロップ）がある場合は読む時間を少し長めに取る。
+    const delay =
+      expEarned > 0 || skillPointsEarned > 0 || droppedItemSummary.length > 0 || bagFullCount > 0
+        ? 3000
+        : 1800;
     const t = window.setTimeout(() => {
       router.push("/games/game1/home");
     }, delay);
     return () => window.clearTimeout(t);
-  }, [result, router, expEarned, droppedItemSummary, bagFullCount]);
+  }, [result, router, expEarned, skillPointsEarned, droppedItemSummary, bagFullCount]);
 
   function handleNormalAttack() {
-    resolvePlayerActionRef.current?.();
+    resolvePlayerActionRef.current?.({ type: "normal" });
+    resolvePlayerActionRef.current = null;
+  }
+
+  function handleSkillSelect(skill: SkillBaseInfo, plusLevel: number) {
+    resolvePlayerActionRef.current?.({ type: "skill", skill, plusLevel });
     resolvePlayerActionRef.current = null;
   }
 
@@ -421,14 +611,16 @@ export default function BattlePage() {
             )}
             <div className="relative w-full">
               <span
-                className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-base font-extrabold text-[#ff6b6b] [text-shadow:0_1px_4px_rgba(0,0,0,0.85)]"
+                className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-base font-extrabold [text-shadow:0_1px_4px_rgba(0,0,0,0.85)]"
                 style={{
-                  opacity: unit.damagePhase === "visible" ? 1 : 0,
+                  opacity: unit.popupPhase === "visible" ? 1 : 0,
                   transition: "opacity 150ms ease-out",
+                  color: unit.popupKind === "heal" ? "#7cffb2" : "#ff6b6b",
                 }}
               >
-                -{unit.lastDamage}
-                {unit.lastCrit ? " 会心!" : ""}
+                {unit.popupKind === "heal"
+                  ? `+${unit.popupValue} 回復`
+                  : `-${unit.popupValue}${unit.popupCrit ? " 会心!" : ""}`}
               </span>
               <img
                 src={poseAsset(unit)}
@@ -449,10 +641,11 @@ export default function BattlePage() {
           <p className="text-3xl font-extrabold text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.8)]">
             {result === "clear" ? "ステージクリア！" : "敗北…"}
           </p>
-          {(expEarned > 0 || droppedItemSummary.length > 0) && (
+          {(expEarned > 0 || skillPointsEarned > 0 || droppedItemSummary.length > 0) && (
             <>
               <p className="text-sm font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
                 獲得経験値：{expEarned}pt
+                {skillPointsEarned > 0 ? `　獲得スキルポイント：${skillPointsEarned}pt` : ""}
               </p>
               {droppedItemSummary.length > 0 && (
                 <div className="mt-1 flex flex-wrap items-center justify-center gap-2 px-6">
@@ -487,12 +680,9 @@ export default function BattlePage() {
       {awaitingPlayer && !result && (() => {
         const activeUnit = units.find((u) => u.key === activeKey);
         const baseInfo = activeUnit ? getCharacterBaseInfo(activeUnit.id) : undefined;
-        // スキルは将来的に「初期は通常攻撃＋スキル1つのみ解放、以降はスキル
-        // ポイントで順次解放・育成」という設計にする予定（docs/spec/skills.md
-        // 参照）。解放状況を持つセーブデータがまだ無いため、動作確認として
-        // 一旦キットの4枠を全て表示している（ここが将来、解放済み分だけに
-        // 絞り込む・未解放は鍵アイコン表示にする、などの分岐ポイントになる）。
         const skillKit = activeUnit ? getCharacterSkillKit(activeUnit.id) : [];
+        const investedPoints = skillInvestedPointsRef.current;
+
         return (
           <div className="absolute inset-x-0 bottom-0 z-20 flex items-end justify-around border-t border-[rgba(201,195,255,0.25)] bg-black/85 px-1 pb-4 pt-4">
             <button
@@ -508,16 +698,46 @@ export default function BattlePage() {
                 />
               )}
             </button>
-            {skillKit.map((skill) => (
-              <div key={skill.id} className="flex flex-1 flex-col items-center gap-1 opacity-40">
-                <img
-                  src={skill.icon}
-                  alt={skill.name}
-                  className="h-14 w-14 rounded-xl object-contain"
-                  draggable={false}
-                />
-              </div>
-            ))}
+            {activeUnit &&
+              skillKit.map((skill) => {
+                const invested = investedPoints[skill.id] ?? 0;
+                const unlocked = isSkillUnlocked(skill.id, invested);
+                const plusLevel = skillPlusLevel(skill.id, invested);
+                const availableAt = activeUnit.skillAvailableAtTurn[skill.id] ?? 0;
+                // 使用可能になるのは「自分の手番カウンターがavailableAtを超えたら」
+                // （＝availableAtと同じ手番はまだロック中。CTの「1ターン分は必ず
+                // 空ける」という仕様に対応する境界値）。
+                const cooldownRemaining = unlocked
+                  ? Math.max(0, availableAt - activeUnit.ownTurnCounter + 1)
+                  : 0;
+                const usable = unlocked && cooldownRemaining === 0;
+                return (
+                  <button
+                    key={skill.id}
+                    onClick={() => usable && handleSkillSelect(skill, plusLevel)}
+                    disabled={!usable}
+                    className="relative flex flex-1 flex-col items-center gap-1"
+                  >
+                    <img
+                      src={skill.icon}
+                      alt={skill.name}
+                      className="h-14 w-14 rounded-xl object-contain"
+                      draggable={false}
+                      style={{ opacity: usable ? 1 : 0.35 }}
+                    />
+                    {!unlocked && (
+                      <span className="absolute inset-0 flex items-center justify-center text-lg [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
+                        🔒
+                      </span>
+                    )}
+                    {unlocked && cooldownRemaining > 0 && (
+                      <span className="absolute inset-0 flex items-center justify-center text-lg font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
+                        {cooldownRemaining}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
           </div>
         );
       })()}

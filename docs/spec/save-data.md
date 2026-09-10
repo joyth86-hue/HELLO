@@ -44,6 +44,10 @@ interface ItemInstance {
   instanceId: string; // 個体ごとに一意なID
   itemId: string; // lib/items-info.tsのID（例: "i001"）
   plus: number; // 合成による強化値。端数（小数）まで正確に持つ。効果・表示は切り捨てて使う
+  // 武器のみ：ドロップ時に1回だけ決まるランダムな追加能力枠（合成の対象外、ずっと固定）。
+  // 詳細はitems.mdの「アイテムごとの能力差」参照。
+  substatStat?: "hp" | "atk" | "def" | "critRate" | "critDamage" | "elementResist";
+  substatValue?: number;
 }
 
 // キャラクター1体分の装備。武器スロット1つ＋アーティファクトスロット3つ固定。
@@ -62,6 +66,8 @@ interface Game1SaveData {
   activePartyIds: string[]; // バトルに参加させるキャラID（最大3人）
   expPoints: number; // 未振り分けの経験値ポイント（キャラクター育成用、「訓練」ボタンで消費）
   characterInvestedExp: Record<string, number>; // キャラID → これまでに投入した経験値ポイントの累計（キー無し＝0＝レベル1）。レベルはここから逆算する
+  skillPoints: number; // 未振り分けのスキルポイント（経験値ポイントとは別資源。ステージ「クリア」時のみ固定量が加算される）
+  skillInvestedPoints: Record<string, number>; // スキルID → これまでに投入したスキルポイントの累計（キー無し＝0＝未解放）。解放状況・強化段階（＋N）はここから逆算する
   testMode: boolean; // テストモード（全ステージ・全アイテム解放）。詳細はtest-mode.md参照
 }
 ```
@@ -73,6 +79,8 @@ interface Game1SaveData {
 `maxClearedStage` / `activePartyIds`は[冒険システム設計](./adventure-system.md)で使う。キャラクターの仲間解放は`maxClearedStage`から`isCharacterUnlocked()`で判定し、新しく解放されたキャラクターは編成が3人未満なら`syncActivePartyWithUnlocks()`で自動的に`activePartyIds`へ追加する。
 
 `characterInvestedExp`は累計値のみを保存し、レベルは都度[lib/character-growth.ts](../../lib/character-growth.ts)の`levelFromInvestedExp()`で逆算する（`getCharacterLevel()`経由）。詳細は[adventure-system.md](./adventure-system.md#経験値とレベル成長)参照。
+
+`skillInvestedPoints`も累計値のみを保存し、解放状況・強化段階（＋N）は都度[lib/skill-progression.ts](../../lib/skill-progression.ts)の`isSkillUnlocked()`/`skillPlusLevel()`で逆算する。詳細は[skills.md](./skills.md#スキルの解放強化スキルポイント)参照。
 
 ### `schemaVersion`によるセーブデータの互換性
 
