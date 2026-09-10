@@ -599,33 +599,26 @@ export default function CharacterViewPage() {
             </div>
           </div>
 
-          <button
-            onClick={openTrainSheet}
-            className="mt-2 flex w-full items-center justify-between rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2 text-sm text-[#eee9ff] backdrop-blur-sm"
-          >
-            <span className="font-bold">訓練</span>
-            <span className="text-[11px] text-[#b8b3d9]">
-              経験値ポイント {(saveData?.expPoints ?? 0).toLocaleString()}pt
-            </span>
-          </button>
-
-          <button
-            onClick={openSynthesis}
-            className="mt-2 flex w-full items-center justify-between rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2 text-sm text-[#eee9ff] backdrop-blur-sm"
-          >
-            <span className="font-bold">合成</span>
-            <span className="text-[11px] text-[#b8b3d9]">武器・アーティファクトを強化</span>
-          </button>
-
-          <button
-            onClick={openSkillSheet}
-            className="mt-2 flex w-full items-center justify-between rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] px-3.5 py-2 text-sm text-[#eee9ff] backdrop-blur-sm"
-          >
-            <span className="font-bold">スキル</span>
-            <span className="text-[11px] text-[#b8b3d9]">
-              スキルポイント {(saveData?.skillPoints ?? 0).toLocaleString()}pt
-            </span>
-          </button>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <button
+              onClick={openTrainSheet}
+              className="rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] py-2.5 text-sm font-bold text-[#eee9ff] backdrop-blur-sm"
+            >
+              訓練
+            </button>
+            <button
+              onClick={openSynthesis}
+              className="rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] py-2.5 text-sm font-bold text-[#eee9ff] backdrop-blur-sm"
+            >
+              合成
+            </button>
+            <button
+              onClick={openSkillSheet}
+              className="rounded-xl border border-[rgba(201,195,255,0.4)] bg-[rgba(255,255,255,0.09)] py-2.5 text-sm font-bold text-[#eee9ff] backdrop-blur-sm"
+            >
+              スキル
+            </button>
+          </div>
         </div>
       </div>
 
@@ -749,18 +742,31 @@ export default function CharacterViewPage() {
                     key={skill.id}
                     className="flex items-center gap-3 rounded-xl border-2 border-zinc-300 bg-white p-2"
                   >
-                    <img
-                      src={skill.icon}
-                      alt={skill.name}
-                      className="h-12 w-12 flex-shrink-0 rounded-lg object-contain"
-                      style={{ opacity: unlocked ? 1 : 0.4 }}
-                    />
+                    {unlocked ? (
+                      <img
+                        src={skill.icon}
+                        alt={skill.name}
+                        className="h-12 w-12 flex-shrink-0 rounded-lg object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-200 text-xl">
+                        🔒
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-black">
-                        {skill.name}
-                        {unlocked ? `　+${plus}` : "　未解放"}
-                      </p>
-                      <p className="truncate text-[11px] text-zinc-500">{skill.description}</p>
+                      {unlocked ? (
+                        <>
+                          <p className="truncate text-sm font-bold text-black">
+                            {skill.name}　+{plus}
+                          </p>
+                          <p className="truncate text-[11px] text-zinc-500">{skill.description}</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="truncate text-sm font-bold text-zinc-400">？？？</p>
+                          <p className="truncate text-[11px] text-zinc-400">未解放のスキル</p>
+                        </>
+                      )}
                     </div>
                     <button
                       onClick={() => submitSkillInvest(skill.id, unlocked)}
