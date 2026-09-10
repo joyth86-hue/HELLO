@@ -90,7 +90,10 @@ export default function Game1HomePage() {
         </p>
       </div>
 
-      <div className="absolute right-4 top-[calc(6.5rem_+_env(safe-area-inset-top))] z-10 flex flex-col gap-3">
+      {/* z-20：下の「冒険に行く」を囲むdiv（z-10、画面全体を覆う）と同じz-10だと、
+          後からDOMに現れるそちら側が同ランクのタイブレークで上に乗ってしまい、
+          見た目は表示されるのにタップだけ効かなくなる不具合が実際に発生した。 */}
+      <div className="absolute right-4 top-[calc(6.5rem_+_env(safe-area-inset-top))] z-20 flex flex-col gap-3">
         {HOME_SIDE_BUTTONS.map((btn) =>
           btn.key === "present" ? (
             <button key={btn.key} aria-label={btn.label} onClick={openCodeSheet}>
