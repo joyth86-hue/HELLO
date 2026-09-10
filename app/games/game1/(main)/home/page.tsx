@@ -143,7 +143,11 @@ export default function Game1HomePage() {
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value)}
               placeholder="コードを入力"
-              className="w-full rounded-lg border-2 border-zinc-300 px-3 py-2 text-sm text-black outline-none focus:border-black"
+              // text-sm（14px）のままだとiOS Safariが「フォーカス時、文字サイズが
+              // 16px未満の入力欄はズームする」仕様により画面ごと拡大される不具合が
+              // 実際に発生した（訓練シートの入力欄と同じ原因）。16px以上（text-base）
+              // にするとこの自動ズーム自体が発生しなくなる。
+              className="w-full rounded-lg border-2 border-zinc-300 px-3 py-2 text-base text-black outline-none focus:border-black"
             />
             {codeMessage && <p className="mt-2 text-xs font-bold text-[#4a3f86]">{codeMessage}</p>}
             <div className="mt-4 flex gap-2">
