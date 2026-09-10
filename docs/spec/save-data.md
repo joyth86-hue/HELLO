@@ -69,7 +69,27 @@ interface Game1SaveData {
   skillPoints: number; // 未振り分けのスキルポイント（経験値ポイントとは別資源。ステージ「クリア」時のみ固定量が加算される）
   skillInvestedPoints: Record<string, number>; // スキルID → これまでに投入したスキルポイントの累計（キー無し＝0＝未解放）。解放状況・強化段階（＋N）はここから逆算する
   shownIndividualMessageIds: string[]; // 戦闘結果フレームの個別メッセージ（仲間解放など）のうち表示済みのID一覧。同じステージを周回しても再表示しないための記録（詳細はscreens/battle-test.md参照）
+  gachaTickets: number; // ガチャ（武器ガチャ）チケットの所持数。デイリーミッション報酬で入手し、ショップ画面で1枚消費して宝箱を1回開ける（詳細はscreens/shop.md参照）
+  dailyMissions: DailyMissionState; // デイリーミッションの今日の進捗・受取状況（詳細はlib/daily-missions.ts、screens/game1-home.md参照）
   testMode: boolean; // テストモード（全ステージ・全アイテム解放）。詳細はtest-mode.md参照
+}
+
+// デイリーミッションの進捗・受取状況（lib/daily-missions.ts）。dateはローカル日付
+// （YYYY-MM-DD）で、これが今日の日付と一致しない場合は「その日の分はまだ無い」
+// として扱い、実際に読む際にその場で今日分の初期状態へ差し替える
+// （getEffectiveDailyMissions()、書き戻しはホーム画面を開いた時点で行われる）。
+interface DailyMissionState {
+  date: string;
+  battleWinCount: number; // 今日勝利したバトル（戦闘画面の1バトルごと）の数
+  stageClearCount: number; // 今日クリアした（ボスを倒した）ステージの数
+  trainOrSynthesizeCount: number; // 今日、訓練または合成を行った回数
+  claimed: {
+    login: boolean;
+    battle: boolean;
+    stage: boolean;
+    train: boolean;
+    complete: boolean;
+  };
 }
 ```
 

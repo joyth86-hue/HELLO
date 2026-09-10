@@ -38,6 +38,7 @@ import {
   skillPlusLevel,
   SKILL_POINT_COST_PER_STEP,
 } from "@/lib/skill-progression";
+import { markTrainOrSynthesize } from "@/lib/daily-missions";
 import GameBackground from "@/components/GameBackground";
 import TestModeBadge from "@/components/TestModeBadge";
 
@@ -340,7 +341,7 @@ export default function CharacterViewPage() {
 
   function confirmSynthesis() {
     if (!saveData || !synthesisPreview) return;
-    const next = applySynthesis(saveData, synthesisPreview);
+    const next = markTrainOrSynthesize(applySynthesis(saveData, synthesisPreview));
     saveGame1Data(next);
     setSaveData(next);
     setSynthesisMessage(
@@ -384,7 +385,7 @@ export default function CharacterViewPage() {
       return;
     }
     const beforeLevel = getCharacterLevel(saveData, currentId);
-    const next = investExpInCharacter(saveData, currentId, amount);
+    const next = markTrainOrSynthesize(investExpInCharacter(saveData, currentId, amount));
     saveGame1Data(next);
     setSaveData(next);
     const afterLevel = getCharacterLevel(next, currentId);

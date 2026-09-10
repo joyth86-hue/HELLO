@@ -5,6 +5,7 @@ import { loadGameData, saveGameData, readRawGameData } from "./storage";
 import { levelFromInvestedExp } from "./character-growth";
 import { rollWeaponSubstat, type WeaponSubstatKind } from "./item-substat";
 import { SKILL_POINT_COST_PER_STEP } from "./skill-progression";
+import { defaultDailyMissionState, type DailyMissionState } from "./daily-missions";
 
 // アイテムの所持数上限（個体数ベース）。超えるドロップは受け取れない。
 export const INVENTORY_CAP = 100;
@@ -41,7 +42,7 @@ export type EquipmentState = Record<string, CharacterEquipment>;
 
 // セーブデータの構造を変える際にインクリメントする。読み込み時にこれと一致しない
 // （＝古い構造の）データは初期状態として扱う（詳細はloadGame1Data参照）。
-export const SAVE_SCHEMA_VERSION = 4;
+export const SAVE_SCHEMA_VERSION = 5;
 
 export interface Game1SaveData {
   schemaVersion: number;
@@ -70,6 +71,11 @@ export interface Game1SaveData {
   // ここに入っているメッセージは、同じステージを再度クリアしても再表示しない
   // （詳細はapp/games/game1/battle/page.tsxのgetIndividualMessagesForStageClear参照）。
   shownIndividualMessageIds: string[];
+  // ガチャ（武器ガチャ）チケットの所持数。デイリーミッションの報酬で入手し、
+  // ショップ画面で1枚消費して宝箱を1回開ける（詳細はlib/daily-missions.ts参照）。
+  gachaTickets: number;
+  // デイリーミッションの今日の進捗・受取状況（lib/daily-missions.ts参照）。
+  dailyMissions: DailyMissionState;
   // テストプレイ用の全解放モード。詳細はlib/test-mode.ts参照。
   testMode: boolean;
 }
@@ -265,6 +271,8 @@ export const defaultGame1Data: Game1SaveData = {
   skillPoints: 0,
   skillInvestedPoints: {},
   shownIndividualMessageIds: [],
+  gachaTickets: 0,
+  dailyMissions: defaultDailyMissionState,
   testMode: false,
 };
 

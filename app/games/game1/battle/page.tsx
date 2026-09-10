@@ -35,6 +35,7 @@ import {
   skillPlusLevel,
   SKILL_POINTS_PER_STAGE_CLEAR,
 } from "@/lib/skill-progression";
+import { addBattleWins, addStageClear } from "@/lib/daily-missions";
 
 // 本実装のステージ内10バトル連戦（S-1〜S-10）。詳細はdocs/spec/screens/battle.md参照。
 // ステージ選択画面（/games/game1/stages）からは ?stage=N 付きで遷移してくる。
@@ -493,7 +494,13 @@ export default function BattlePage() {
   // 全滅時も「そこまでに倒した敵の分」の経験値は持ち帰れる（maxClearedStageは
   // 更新しない）。スキルポイントは経験値と違い、ステージクリア時のみ固定量が
   // 加算される（ユーザー確認済み：難易度が上がっても増減しない）。
-  function commitRewards(totalExp: number, droppedItems: DroppedItem[], stage: number, cleared: boolean) {
+  function commitRewards(
+    totalExp: number,
+    droppedItems: DroppedItem[],
+    stage: number,
+    cleared: boolean,
+    subBattleWins: number
+  ) {
     const data = loadGame1Data();
     let next: Game1SaveData = {
       ...data,
@@ -505,6 +512,10 @@ export default function BattlePage() {
           }
         : {}),
     };
+
+    // デイリーミッション：勝利したバトル数を加算し、ステージクリアならそちらもカウントする。
+    next = addBattleWins(next, subBattleWins);
+    if (cleared) next = addStageClear(next);
 
     // ステージクリア時のみ、未表示の個別メッセージ（仲間解放など）が無いか確認する。
     // 一度表示したメッセージは、同じステージを再クリアしても出さない。
@@ -554,6 +565,7 @@ export default function BattlePage() {
     try {
       let allies = buildAllyUnits(saveData.activePartyIds, saveData);
       let totalExp = 0;
+      let subBattleWins = 0;
       const droppedItems: DroppedItem[] = [];
 
       for (let sub = 1; sub <= BATTLES_PER_STAGE; sub++) {
@@ -570,11 +582,12 @@ export default function BattlePage() {
           const partialExp = unitsRef.current
             .filter((u) => u.side === "enemy" && !u.alive)
             .reduce((sum, u) => sum + u.exp, 0);
-          commitRewards(totalExp + partialExp, droppedItems, stage, false);
+          commitRewards(totalExp + partialExp, droppedItems, stage, false, subBattleWins);
           setResult("defeat");
           return;
         }
 
+        subBattleWins += 1;
         totalExp += enemies.reduce((sum, e) => sum + e.exp, 0);
         const drop = rollDropForBattle(stage, isBoss);
         if (drop) droppedItems.push(drop);
@@ -587,7 +600,7 @@ export default function BattlePage() {
       }
 
       // S-10（ボス）を撃破：ステージクリア
-      commitRewards(totalExp, droppedItems, stage, true);
+      commitRewards(totalExp, droppedItems, stage, true, subBattleWins);
       setResult("clear");
     } catch (err) {
       // 想定外のエラーで進行不能になった場合に、無言のまま固まるのを避ける保険。

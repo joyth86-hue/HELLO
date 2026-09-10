@@ -51,13 +51,19 @@ export interface DroppedItem {
   rarity: ItemRarity;
 }
 
-// 1バトル分のドロップ判定。落ちなければnull。レアリティが決まった後は、その
-// レアリティの全アイテム（武器種問わず）から均等ランダムで1つ選ぶ。
-export function rollDropForBattle(stage: number, isBoss: boolean): DroppedItem | null {
-  if (Math.random() >= dropChance(isBoss)) return null;
+// レアリティ抽選テーブル（RARITY_BLOCKS、stageに応じたもの）から1つ選び、その
+// レアリティの全アイテム（武器種問わず）から均等ランダムで1つ選ぶ。必ず1つ返す
+// （ガチャ用：戦闘ドロップと違い「そもそも落ちない」判定を挟まない）。
+export function rollGachaItem(stage: number): DroppedItem {
   const rarity = rollRarity(stage);
   const candidates = ITEM_BASE_INFO.filter((item) => item.rarity === rarity);
-  if (candidates.length === 0) return null;
   const picked = candidates[Math.floor(Math.random() * candidates.length)];
   return { itemId: picked.id, rarity };
+}
+
+// 1バトル分のドロップ判定。落ちなければnull。落ちた場合のレアリティ・アイテム
+// 抽選はrollGachaItem()と共通。
+export function rollDropForBattle(stage: number, isBoss: boolean): DroppedItem | null {
+  if (Math.random() >= dropChance(isBoss)) return null;
+  return rollGachaItem(stage);
 }
