@@ -617,10 +617,14 @@ export default function BattlePage() {
               opacity: unit.alive ? 1 : 0.25,
             } as React.CSSProperties}
           >
-            {activeKey === unit.key && !result && (
-              <div className="mb-1 h-2 w-2 animate-pulse rounded-full bg-yellow-300" />
-            )}
             <div className="relative w-full">
+              {/* 手番中インジケータは通常フローに置くと、表示/非表示の切り替わりで
+                  下の画像・HPゲージの位置がガクッと動いてしまっていた（実際に発生した
+                  不具合）。position: absoluteにして高さを持たないようにし、ポーズが
+                  切り替わっても画像・HPゲージの位置が動かないようにしている。 */}
+              {activeKey === unit.key && !result && (
+                <div className="pointer-events-none absolute -top-3 left-1/2 h-2 w-2 -translate-x-1/2 animate-pulse rounded-full bg-yellow-300" />
+              )}
               <span
                 className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-xl font-extrabold"
                 style={{
