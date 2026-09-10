@@ -13,7 +13,7 @@ Next.jsのルートグループ `app/games/game1/(main)/` の下に5画面を置
 | タブ | ラベル | 遷移先 | 画面の仕様書 |
 | --- | --- | --- | --- |
 | map | マップ | `/games/game1/map` | 未実装（プレースホルダーのみ） |
-| shop | ショップ | `/games/game1/shop` | 未実装（プレースホルダーのみ） |
+| shop | ショップ | `/games/game1/shop` | [shop.md](./shop.md)（武器ガチャ、現状は演出確認版） |
 | adventure | 冒険 | `/games/game1/home` | [game1-home.md](./game1-home.md) |
 | party | 仲間 | `/games/game1/character` | [character-view.md](./character-view.md) |
 | bag | バッグ | `/games/game1/bag` | [bag.md](./bag.md) |
@@ -45,5 +45,6 @@ Next.jsのルートグループ `app/games/game1/(main)/` の下に5画面を置
 
 ## 今後
 
-- マップ・ショップ画面は未実装（「準備中です」の文言のみ表示するプレースホルダー）。中身が決まり次第、それぞれ専用の仕様書を作成する
+- マップ画面は未実装（「準備中です」の文言のみ表示するプレースホルダー）。中身が決まり次第、専用の仕様書を作成する
+- ショップ（武器ガチャ）画面は演出確認版のみ実装済み。実際のアイテム付与・ポイント消費は未実装（[shop.md](./shop.md)の「今後」参照）
 - 「ゲームを終了」に相当する導線が今回のバーには無い。必要であれば別途検討する（[game1-home.md](./game1-home.md)の「今後」も参照）
