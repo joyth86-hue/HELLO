@@ -68,6 +68,7 @@ interface Game1SaveData {
   characterInvestedExp: Record<string, number>; // キャラID → これまでに投入した経験値ポイントの累計（キー無し＝0＝レベル1）。レベルはここから逆算する
   skillPoints: number; // 未振り分けのスキルポイント（経験値ポイントとは別資源。ステージ「クリア」時のみ固定量が加算される）
   skillInvestedPoints: Record<string, number>; // スキルID → これまでに投入したスキルポイントの累計（キー無し＝0＝未解放）。解放状況・強化段階（＋N）はここから逆算する
+  shownIndividualMessageIds: string[]; // 戦闘結果フレームの個別メッセージ（仲間解放など）のうち表示済みのID一覧。同じステージを周回しても再表示しないための記録（詳細はscreens/battle-test.md参照）
   testMode: boolean; // テストモード（全ステージ・全アイテム解放）。詳細はtest-mode.md参照
 }
 ```

@@ -13,6 +13,7 @@ import {
 import { calculateDamage } from "@/lib/combat";
 import {
   addItemsToInventory,
+  CHARACTER_UNLOCK_STAGE,
   getCharacterEquipment,
   getCharacterLevel,
   loadGame1Data,
@@ -141,6 +142,34 @@ function enemyElement(id: string): SkillElement {
   return (element as SkillElement) ?? null;
 }
 
+// ステージクリア結果画面の「個別メッセージ」（仲間解放・機能解放など）。
+// idはGame1SaveData.shownIndividualMessageIdsでの表示済み判定に使う
+// （同じステージを周回しても、一度表示したメッセージは出さないため）。
+interface IndividualMessage {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+// このステージのボスをクリアしたことで発生しうる個別メッセージの候補一覧
+// （表示済みかどうかのフィルタは呼び出し側で行う）。
+// 現状は仲間解放（CHARACTER_UNLOCK_STAGE）のみだが、今後「〇〇機能が解放された」
+// 系のメッセージが増えてもここに追加していけばよい。
+function getIndividualMessagesForStageClear(stage: number): IndividualMessage[] {
+  const messages: IndividualMessage[] = [];
+  for (const [characterId, unlockStage] of Object.entries(CHARACTER_UNLOCK_STAGE)) {
+    if (unlockStage === stage) {
+      const name = getCharacterBaseInfo(characterId)?.name ?? characterId;
+      messages.push({
+        id: `character-unlock:${characterId}`,
+        title: `${name}が仲間になった！`,
+        description: "「仲間」タブから編成に加えられます。",
+      });
+    }
+  }
+  return messages;
+}
+
 function buildAllyUnits(partyIds: string[], saveData: Game1SaveData): BattleUnit[] {
   return partyIds.map((id, slot) => {
     const level = getCharacterLevel(saveData, id);
@@ -223,6 +252,9 @@ export default function BattlePage() {
     { item: ItemBaseInfo; quantity: number }[]
   >([]);
   const [bagFullCount, setBagFullCount] = useState(0);
+  // 結果画面の「ページ」。0=基本メッセージ、1以降=individualMessagesの該当インデックス。
+  const [resultPage, setResultPage] = useState(0);
+  const [individualMessages, setIndividualMessages] = useState<IndividualMessage[]>([]);
 
   const unitsRef = useRef<BattleUnit[]>([]);
   const startedRef = useRef(false);
@@ -473,6 +505,26 @@ export default function BattlePage() {
           }
         : {}),
     };
+
+    // ステージクリア時のみ、未表示の個別メッセージ（仲間解放など）が無いか確認する。
+    // 一度表示したメッセージは、同じステージを再クリアしても出さない。
+    let newMessages: IndividualMessage[] = [];
+    if (cleared) {
+      newMessages = getIndividualMessagesForStageClear(stage).filter(
+        (m) => !data.shownIndividualMessageIds.includes(m.id)
+      );
+      if (newMessages.length > 0) {
+        next = {
+          ...next,
+          shownIndividualMessageIds: [
+            ...data.shownIndividualMessageIds,
+            ...newMessages.map((m) => m.id),
+          ],
+        };
+      }
+    }
+    setIndividualMessages(newMessages);
+
     const addResult = addItemsToInventory(next, droppedItems.map((d) => d.itemId));
     next = addResult.data;
     saveGame1Data(next);
@@ -564,18 +616,16 @@ export default function BattlePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!result) return;
-    // 獲得報酬（経験値・スキルポイント・ドロップ）がある場合は読む時間を少し長めに取る。
-    const delay =
-      expEarned > 0 || skillPointsEarned > 0 || droppedItemSummary.length > 0 || bagFullCount > 0
-        ? 3000
-        : 1800;
-    const t = window.setTimeout(() => {
+  // 結果フレームをタップした時の進行：個別メッセージが残っていれば次のページへ、
+  // 最後のページ（個別メッセージが無ければ基本メッセージそのもの）ならホームへ戻る。
+  function handleResultTap() {
+    const totalPages = 1 + individualMessages.length;
+    if (resultPage < totalPages - 1) {
+      setResultPage((p) => p + 1);
+    } else {
       router.push("/games/game1/home");
-    }, delay);
-    return () => window.clearTimeout(t);
-  }, [result, router, expEarned, skillPointsEarned, droppedItemSummary, bagFullCount]);
+    }
+  }
 
   function handleNormalAttack() {
     resolvePlayerActionRef.current?.({ type: "normal" });
@@ -681,46 +731,111 @@ export default function BattlePage() {
         );
       })}
 
-      {result && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/60">
-          <p className="text-3xl font-extrabold text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.8)]">
-            {result === "clear" ? "ステージクリア！" : "敗北…"}
-          </p>
-          {(expEarned > 0 || skillPointsEarned > 0 || droppedItemSummary.length > 0) && (
-            <>
-              <p className="text-sm font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
-                獲得経験値：{expEarned}pt
-                {skillPointsEarned > 0 ? `　獲得スキルポイント：${skillPointsEarned}pt` : ""}
-              </p>
-              {droppedItemSummary.length > 0 && (
-                <div className="mt-1 flex flex-wrap items-center justify-center gap-2 px-6">
-                  {droppedItemSummary.map(({ item, quantity }) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-1.5 rounded-full bg-black/55 py-1 pl-1 pr-2.5"
-                    >
-                      <img
-                        src={item.asset}
-                        alt={item.name}
-                        className="h-6 w-6 rounded-full object-cover"
-                      />
-                      <span className="text-[11px] font-bold text-white">
-                        {item.name}
-                        {quantity > 1 ? ` ×${quantity}` : ""}
-                      </span>
+      {result && (() => {
+        const totalPages = 1 + individualMessages.length;
+        const isBasePage = resultPage === 0;
+        const message = isBasePage ? null : individualMessages[resultPage - 1];
+        const isLastPage = resultPage === totalPages - 1;
+
+        return (
+          <div
+            className="absolute inset-0 z-30 flex items-center justify-center bg-black/55 px-6"
+            onClick={handleResultTap}
+          >
+            <div className="w-full max-w-[320px] rounded-2xl border border-[rgba(201,195,255,0.5)] px-4 py-4 [box-shadow:0_8px_24px_rgba(0,0,0,0.45)]" style={{ background: "#241f47" }}>
+              {isBasePage ? (
+                <>
+                  <p
+                    className="text-center text-lg font-extrabold"
+                    style={{ color: result === "clear" ? "#ffd27a" : "#d99aa3" }}
+                  >
+                    {result === "clear" ? "ボスを倒した！" : "全滅してしまった…"}
+                  </p>
+                  <p className="mb-2.5 text-center text-xs font-bold text-[#b8b3d9]">
+                    {result === "clear" ? "次のステージに進もう。" : "訓練して出直そう。"}
+                  </p>
+                  <div className="mb-2.5 h-px bg-white/10" />
+                  {expEarned > 0 && (
+                    <div className="flex justify-between px-0.5 py-0.5 text-xs font-bold">
+                      <span className="text-[#b8b3d9]">獲得経験値</span>
+                      <span className="tabular-nums text-[#eee9ff]">{expEarned}pt</span>
                     </div>
-                  ))}
-                </div>
+                  )}
+                  {skillPointsEarned > 0 && (
+                    <div className="flex justify-between px-0.5 py-0.5 text-xs font-bold">
+                      <span className="text-[#b8b3d9]">獲得スキルpt</span>
+                      <span className="tabular-nums text-[#eee9ff]">{skillPointsEarned}pt</span>
+                    </div>
+                  )}
+                  {droppedItemSummary.length > 0 && (
+                    <>
+                      <p className="mb-1.5 mt-2 text-[11px] font-bold text-[#b8b3d9]">獲得アイテム</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {droppedItemSummary.map(({ item, quantity }) => (
+                          <div
+                            key={item.id}
+                            className="relative h-9 w-9 overflow-hidden rounded-lg border border-white/15"
+                          >
+                            <img
+                              src={item.asset}
+                              alt={item.name}
+                              className="h-full w-full object-cover"
+                            />
+                            {quantity > 1 && (
+                              <span className="absolute bottom-0 right-0 rounded-tl bg-black/80 px-1 text-[8px] font-bold text-white">
+                                ×{quantity}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {bagFullCount > 0 && (
+                    <p className="mt-2 text-[10px] font-bold text-[#ffb4b4]">
+                      バッグの所持数が上限のため、{bagFullCount}個のアイテムを受け取れませんでした
+                    </p>
+                  )}
+                </>
+              ) : (
+                message && (
+                  <div className="flex flex-col items-center py-1 text-center">
+                    <div
+                      className="mb-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#c9c3ff] text-xl"
+                      style={{ background: "linear-gradient(180deg,#3c3489,#26215c)" }}
+                    >
+                      ✦
+                    </div>
+                    <p className="text-sm font-extrabold text-[#ffd27a]">{message.title}</p>
+                    {message.description && (
+                      <p className="mt-1 text-[11px] leading-relaxed text-[#b8b3d9]">
+                        {message.description}
+                      </p>
+                    )}
+                  </div>
+                )
               )}
-            </>
-          )}
-          {bagFullCount > 0 && (
-            <p className="mt-1 text-xs font-bold text-[#ffb4b4] [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
-              バッグの所持数が上限のため、{bagFullCount}個のアイテムを受け取れませんでした
-            </p>
-          )}
-        </div>
-      )}
+
+              <div className="mt-3 flex flex-col items-center gap-1.5">
+                {totalPages > 1 && (
+                  <div className="flex gap-1.5">
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <span
+                        key={i}
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: i === resultPage ? "#c9c3ff" : "rgba(255,255,255,0.25)" }}
+                      />
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] font-bold text-[#b8b3d9]">
+                  {isLastPage ? "タップして閉じる" : "タップして次へ"}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {awaitingPlayer && !result && (() => {
         const activeUnit = units.find((u) => u.key === activeKey);

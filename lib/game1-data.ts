@@ -41,7 +41,7 @@ export type EquipmentState = Record<string, CharacterEquipment>;
 
 // セーブデータの構造を変える際にインクリメントする。読み込み時にこれと一致しない
 // （＝古い構造の）データは初期状態として扱う（詳細はloadGame1Data参照）。
-export const SAVE_SCHEMA_VERSION = 3;
+export const SAVE_SCHEMA_VERSION = 4;
 
 export interface Game1SaveData {
   schemaVersion: number;
@@ -66,6 +66,10 @@ export interface Game1SaveData {
   // スキルID → これまでに投入したスキルポイントの累計。
   // 解放状況・強化段階（＋N）はここから逆算する（lib/skill-progression.ts参照）。
   skillInvestedPoints: Record<string, number>;
+  // 戦闘結果画面の個別メッセージ（仲間解放・機能解放など）のうち、表示済みのID一覧。
+  // ここに入っているメッセージは、同じステージを再度クリアしても再表示しない
+  // （詳細はapp/games/game1/battle/page.tsxのgetIndividualMessagesForStageClear参照）。
+  shownIndividualMessageIds: string[];
   // テストプレイ用の全解放モード。詳細はlib/test-mode.ts参照。
   testMode: boolean;
 }
@@ -260,6 +264,7 @@ export const defaultGame1Data: Game1SaveData = {
   characterInvestedExp: {},
   skillPoints: 0,
   skillInvestedPoints: {},
+  shownIndividualMessageIds: [],
   testMode: false,
 };
 
