@@ -109,9 +109,9 @@ interface BattleUnit {
 
 type PlayerAction = { type: "normal" } | { type: "skill"; skill: SkillBaseInfo; plusLevel: number };
 
-// 戦闘全体のテンポ倍率（1.5＝1.5倍速）。演出の間の待ち時間（tempoWait）だけに掛かる。
-// 値を変えるだけでテンポ調整できる（ユーザー確認済み、まずは1.5倍で様子見）。
-const BATTLE_TEMPO_MULTIPLIER = 1.5;
+// 戦闘全体のテンポ倍率（2.0＝2倍速）。演出の間の待ち時間（tempoWait）だけに掛かる。
+// 値を変えるだけでテンポ調整できる（ユーザー確認済み、1.5倍→2.0倍に調整）。
+const BATTLE_TEMPO_MULTIPLIER = 2.0;
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -602,11 +602,11 @@ export default function BattlePage() {
           置く（小さく左上に出すより目立たせても問題ない、ユーザー確認済み）。 */}
       <div className="absolute left-1/2 top-[13%] z-20 -translate-x-1/2 text-center">
         <p className="text-3xl font-extrabold tracking-wide text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.85)]">
-          ステージ {stageLabel}
+          Stage {stageLabel}
         </p>
-        <p className="mt-0.5 text-xs font-bold text-white/80 [text-shadow:0_1px_6px_rgba(0,0,0,0.85)]">
-          {subBattleLabel}/{BATTLES_PER_STAGE}
-          {subBattleLabel === BATTLES_PER_STAGE ? "（ボス）" : ""}
+        <p className="mt-1 text-xl font-extrabold tracking-wide text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.85)]">
+          Battle {subBattleLabel}
+          {subBattleLabel === BATTLES_PER_STAGE ? " (Boss)" : ""}
         </p>
       </div>
 
