@@ -109,8 +109,18 @@ interface BattleUnit {
 
 type PlayerAction = { type: "normal" } | { type: "skill"; skill: SkillBaseInfo; plusLevel: number };
 
+// 戦闘全体のテンポ倍率（1.5＝1.5倍速）。演出の間の待ち時間（tempoWait）だけに掛かる。
+// 値を変えるだけでテンポ調整できる（ユーザー確認済み、まずは1.5倍で様子見）。
+const BATTLE_TEMPO_MULTIPLIER = 1.5;
+
 function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+// 演出のテンポに関わる待ち時間はこちらを使う（BATTLE_TEMPO_MULTIPLIERで一括調整できる）。
+// CSSトランジション開始待ちのような技術的な最小待ち（showPopupのwait(20)）には使わない。
+function tempoWait(ms: number) {
+  return wait(ms / BATTLE_TEMPO_MULTIPLIER);
 }
 
 function poseAsset(unit: BattleUnit): string {
@@ -263,10 +273,10 @@ export default function BattlePage() {
     await wait(20);
     unit.popupPhase = "visible";
     sync();
-    await wait(500);
+    await tempoWait(500);
     unit.popupPhase = "out";
     sync();
-    await wait(150);
+    await tempoWait(150);
     unit.popupPhase = "hidden";
     if (popup.kind === "damage") unit.pose = "idle";
     sync();
@@ -299,11 +309,11 @@ export default function BattlePage() {
 
     attacker.stepped = true;
     sync();
-    await wait(300);
+    await tempoWait(300);
 
     attacker.pose = "attack";
     sync();
-    await wait(300);
+    await tempoWait(300);
 
     target.hp = Math.max(0, target.hp - damage);
     target.alive = target.hp > 0;
@@ -311,10 +321,10 @@ export default function BattlePage() {
 
     attacker.pose = "idle";
     sync();
-    await wait(200);
+    await tempoWait(200);
     attacker.stepped = false;
     sync();
-    await wait(300);
+    await tempoWait(300);
   }
 
   // スキルの発動（攻撃／支援／回復）。CTのセットもここで行う。
@@ -353,7 +363,7 @@ export default function BattlePage() {
 
     attacker.pose = "attack";
     sync();
-    await wait(300);
+    await tempoWait(300);
 
     if (skill.kind === "回復" && skill.effect?.healPercent) {
       const target = mostWoundedAlly();
@@ -369,12 +379,12 @@ export default function BattlePage() {
       }
       setTurnMessage(`${attacker.name}の${skill.name}！`);
       sync();
-      await wait(500);
+      await tempoWait(500);
     }
 
     attacker.pose = "idle";
     sync();
-    await wait(200);
+    await tempoWait(200);
   }
 
   // 1回分のバトル（S-s）を、決着がつくまで進める。
@@ -404,11 +414,11 @@ export default function BattlePage() {
           unit.skipNextTurn = false;
           setTurnMessage(`${unit.name}は動けない！`);
           sync();
-          await wait(700);
+          await tempoWait(700);
           continue;
         }
         setTurnMessage(`${unit.name}のターン`);
-        await wait(400);
+        await tempoWait(400);
         const target = randomAliveTarget("ally");
         if (target) await resolveHit(unit.key, target.key, 0, null);
         continue;
@@ -426,7 +436,7 @@ export default function BattlePage() {
         unit.skipNextTurn = false;
         setTurnMessage(`${unit.name}は動けない！`);
         sync();
-        await wait(700);
+        await tempoWait(700);
         continue;
       }
 
@@ -520,7 +530,7 @@ export default function BattlePage() {
 
         if (sub < BATTLES_PER_STAGE) {
           setTurnMessage(`${sub}戦目クリア！`);
-          await wait(700);
+          await tempoWait(700);
         }
       }
 
@@ -588,9 +598,16 @@ export default function BattlePage() {
         className="absolute inset-0 h-full w-full object-cover"
       />
 
-      <div className="absolute left-4 top-[calc(1rem_+_env(safe-area-inset-top))] z-20 rounded-full bg-black/60 px-3 py-1 text-[11px] font-bold text-white">
-        ステージ {stageLabel} - {subBattleLabel}/{BATTLES_PER_STAGE}
-        {subBattleLabel === BATTLES_PER_STAGE ? "（ボス）" : ""}
+      {/* 上半分は背景のみで余白になっているため、ステージ表示はそこに大きめに
+          置く（小さく左上に出すより目立たせても問題ない、ユーザー確認済み）。 */}
+      <div className="absolute left-1/2 top-[13%] z-20 -translate-x-1/2 text-center">
+        <p className="text-3xl font-extrabold tracking-wide text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.85)]">
+          ステージ {stageLabel}
+        </p>
+        <p className="mt-0.5 text-xs font-bold text-white/80 [text-shadow:0_1px_6px_rgba(0,0,0,0.85)]">
+          {subBattleLabel}/{BATTLES_PER_STAGE}
+          {subBattleLabel === BATTLES_PER_STAGE ? "（ボス）" : ""}
+        </p>
       </div>
 
       {turnMessage && !result && (
