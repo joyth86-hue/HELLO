@@ -14,6 +14,7 @@ import {
   isMissionComplete,
   MISSION_LIST,
   type MissionKey,
+  type MissionListEntry,
 } from "@/lib/daily-missions";
 
 // 仲間が増えるたびに背景も賑やかになる想定（home_01=1人〜home_04=4人）。
@@ -41,6 +42,9 @@ export default function Game1HomePage() {
   const [codeInput, setCodeInput] = useState("");
   const [codeMessage, setCodeMessage] = useState<string | null>(null);
   const [showMissionSheet, setShowMissionSheet] = useState(false);
+  // 受取ボタンを押した直後、報酬を戦闘結果フレームと同じ見た目のポップアップで
+  // 見せるための状態（ミッションシートの上にさらに重ねて表示する）。
+  const [claimedMission, setClaimedMission] = useState<MissionListEntry | null>(null);
 
   useEffect(() => {
     setCurrency(loadGlobalData().currency);
@@ -80,9 +84,12 @@ export default function Game1HomePage() {
   function handleClaimMission(key: MissionKey) {
     if (!saveData) return;
     const next = claimMission(saveData, key);
+    if (next === saveData) return; // 未達成・受取済みなら何もしない（ボタン側でも弾いているが念のため）
     saveGame1Data(next);
     setSaveData(next);
     setExpPoints(next.expPoints);
+    const mission = MISSION_LIST.find((m) => m.key === key);
+    if (mission) setClaimedMission(mission);
   }
 
   // ブックマーク等でこの画面へ直接アクセスされた場合、入口（/）へ差し戻す。
@@ -205,23 +212,16 @@ export default function Game1HomePage() {
               <div className="flex flex-col gap-2">
                 {missionState &&
                   MISSION_LIST.map((mission) => {
-                    const goal = mission.goal(missionState);
-                    const progress = Math.min(mission.progress(missionState), goal);
                     const complete = isMissionComplete(missionState, mission.key);
                     const claimed = missionState.claimed[mission.key];
                     return (
                       <div
                         key={mission.key}
-                        className="flex items-center gap-3 rounded-xl border-2 border-zinc-300 bg-white p-2"
+                        className="flex items-center gap-3 rounded-xl border-2 border-zinc-300 bg-white p-2.5"
                       >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-black">{mission.title}</p>
-                          <p className="truncate text-[11px] text-zinc-500">{mission.description}</p>
-                          <p className="text-[11px] font-bold text-[#4a3f86]">
-                            {mission.rewardLabel}
-                            {!claimed && !complete ? `（${progress}/${goal}）` : ""}
-                          </p>
-                        </div>
+                        <p className="min-w-0 flex-1 truncate text-sm font-bold text-black">
+                          {mission.description}
+                        </p>
                         <button
                           onClick={() => handleClaimMission(mission.key)}
                           disabled={claimed || !complete}
@@ -243,6 +243,31 @@ export default function Game1HomePage() {
           </>
         );
       })()}
+
+      {/* ミッション報酬の受取ポップアップ。戦闘結果フレーム（battle/page.tsx）と
+          同じ見た目（不透明な濃い紫のカード、タップして閉じる）で揃えている。 */}
+      {claimedMission && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 px-6"
+          onClick={() => setClaimedMission(null)}
+        >
+          <div
+            className="w-full max-w-[320px] rounded-2xl border border-[rgba(201,195,255,0.5)] px-4 py-4 [box-shadow:0_8px_24px_rgba(0,0,0,0.45)]"
+            style={{ background: "#241f47" }}
+          >
+            <p className="text-center text-lg font-extrabold text-[#ffd27a]">ミッション達成！</p>
+            <p className="mb-2.5 text-center text-xs font-bold text-[#b8b3d9]">
+              {claimedMission.description}
+            </p>
+            <div className="mb-2.5 h-px bg-white/10" />
+            <div className="flex justify-between px-0.5 py-0.5 text-xs font-bold">
+              <span className="text-[#b8b3d9]">獲得報酬</span>
+              <span className="tabular-nums text-[#eee9ff]">{claimedMission.rewardLabel}</span>
+            </div>
+            <p className="mt-3 text-center text-[10px] font-bold text-[#b8b3d9]">タップして閉じる</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

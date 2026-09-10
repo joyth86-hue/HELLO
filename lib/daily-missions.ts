@@ -115,9 +115,11 @@ export function claimMission(data: Game1SaveData, key: MissionKey): Game1SaveDat
   }
 }
 
+// 画面には1ミッションにつき1行（description）＋ボタンだけを表示する
+// （タイトル・報酬・進捗はあえて行に出さない。報酬は受取時のポップアップ側で
+// 見せる、ユーザー確認済みの簡略化）。
 export interface MissionListEntry {
   key: MissionKey;
-  title: string;
   description: string;
   rewardLabel: string;
   goal: (state: DailyMissionState) => number;
@@ -127,15 +129,13 @@ export interface MissionListEntry {
 export const MISSION_LIST: MissionListEntry[] = [
   {
     key: "login",
-    title: "ログインボーナス",
-    description: "ゲームを開く",
+    description: "ゲームにログインする",
     rewardLabel: "経験値+20pt",
     goal: () => 1,
     progress: () => 1,
   },
   {
     key: "battle",
-    title: "バトル勝利",
     description: `バトルに${BATTLE_WIN_GOAL}回勝利する`,
     rewardLabel: "経験値+30pt",
     goal: () => BATTLE_WIN_GOAL,
@@ -143,7 +143,6 @@ export const MISSION_LIST: MissionListEntry[] = [
   },
   {
     key: "stage",
-    title: "ステージクリア",
     description: "ステージを1つクリアする",
     rewardLabel: "ガチャチケット×1",
     goal: () => STAGE_CLEAR_GOAL,
@@ -151,16 +150,14 @@ export const MISSION_LIST: MissionListEntry[] = [
   },
   {
     key: "train",
-    title: "育成",
-    description: "訓練または合成を1回行う",
+    description: "訓練か合成を1回行う",
     rewardLabel: "スキルポイント+5pt",
     goal: () => TRAIN_OR_SYNTHESIZE_GOAL,
     progress: (s) => s.trainOrSynthesizeCount,
   },
   {
     key: "complete",
-    title: "コンプリートボーナス",
-    description: "上記すべてを受け取る",
+    description: "全てのミッションを達成する",
     rewardLabel: "ガチャチケット×1",
     goal: () => 4,
     progress: (s) => [s.claimed.login, s.claimed.battle, s.claimed.stage, s.claimed.train].filter(Boolean).length,
