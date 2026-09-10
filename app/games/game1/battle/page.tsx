@@ -622,16 +622,19 @@ export default function BattlePage() {
             )}
             <div className="relative w-full">
               <span
-                className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-base font-extrabold [text-shadow:0_1px_4px_rgba(0,0,0,0.85)]"
+                className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-xl font-extrabold"
                 style={{
                   opacity: unit.popupPhase === "visible" ? 1 : 0,
                   transition: "opacity 150ms ease-out",
-                  color: unit.popupKind === "heal" ? "#7cffb2" : "#ff6b6b",
+                  // 通常ダメージ＝白／会心ダメージ＝赤／回復＝緑。符号（-/+）や「会心!」の
+                  // 文字は付けず、色と黒フチだけで区別する（ユーザー確認済みのB案）。
+                  color: unit.popupKind === "heal" ? "#7cffb2" : unit.popupCrit ? "#ff4d4d" : "#fff",
+                  WebkitTextStroke: `3px ${unit.popupKind === "heal" ? "#0d2a1c" : "#14101f"}`,
+                  paintOrder: "stroke fill",
+                  textShadow: unit.popupKind === "heal" ? undefined : "0 3px 5px rgba(0,0,0,0.4)",
                 }}
               >
-                {unit.popupKind === "heal"
-                  ? `+${unit.popupValue} 回復`
-                  : `-${unit.popupValue}${unit.popupCrit ? " 会心!" : ""}`}
+                {unit.popupKind === "heal" ? `${unit.popupValue} 回復` : `${unit.popupValue}`}
               </span>
               <img
                 src={poseAsset(unit)}
