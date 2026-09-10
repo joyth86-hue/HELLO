@@ -612,19 +612,20 @@ export default function BattlePage() {
               top: pos.top,
               width: "16%",
               zIndex: pos.z,
-              transform: `translateX(${unit.stepped ? stepPx : 0}px)`,
-              transition: "transform 300ms ease-out, opacity 300ms ease-out",
               opacity: unit.alive ? 1 : 0.25,
+              transition: "opacity 300ms ease-out",
             } as React.CSSProperties}
           >
-            <div className="relative w-full">
-              {/* 手番中インジケータは通常フローに置くと、表示/非表示の切り替わりで
-                  下の画像・HPゲージの位置がガクッと動いてしまっていた（実際に発生した
-                  不具合）。position: absoluteにして高さを持たないようにし、ポーズが
-                  切り替わっても画像・HPゲージの位置が動かないようにしている。 */}
-              {activeKey === unit.key && !result && (
-                <div className="pointer-events-none absolute -top-3 left-1/2 h-2 w-2 -translate-x-1/2 animate-pulse rounded-full bg-yellow-300" />
-              )}
+            {/* 攻撃時の「1歩前に出る」演出（stepped）はキャラ画像だけに掛ける。
+                HPゲージまで一緒に動かす指示は無いため、ゲージはこのtransformの
+                外（兄弟要素）に置いて常に位置を固定している。 */}
+            <div
+              className="relative w-full"
+              style={{
+                transform: `translateX(${unit.stepped ? stepPx : 0}px)`,
+                transition: "transform 300ms ease-out",
+              }}
+            >
               <span
                 className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-xl font-extrabold"
                 style={{
