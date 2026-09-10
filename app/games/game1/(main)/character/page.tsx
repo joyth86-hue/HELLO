@@ -629,7 +629,7 @@ export default function CharacterViewPage() {
             onClick={() => setPicker(null)}
             aria-hidden="true"
           />
-          <div className="fixed inset-x-0 bottom-0 z-[61] max-h-[70vh] overflow-y-auto rounded-t-2xl border-t-2 border-black bg-[#fffaf0] p-4 pb-6">
+          <div className="fixed inset-x-0 bottom-0 z-[61] max-h-[92vh] overflow-y-auto rounded-t-2xl border-t-2 border-black bg-[#fffaf0] p-4 pb-6">
             <div className="mb-3 flex items-center justify-between">
               <p className="font-bold text-black">
                 {picker.kind === "weapon" ? "武器を選ぶ" : "アーティファクトを選ぶ"}
@@ -800,7 +800,7 @@ export default function CharacterViewPage() {
       {showSynthesis && (
         <>
           <div className="fixed inset-0 z-[60] bg-black/45" onClick={closeSynthesis} aria-hidden="true" />
-          <div className="fixed inset-x-0 bottom-0 z-[61] max-h-[80vh] overflow-y-auto rounded-t-2xl border-t-2 border-black bg-[#fffaf0] p-4 pb-6">
+          <div className="fixed inset-x-0 bottom-0 z-[61] max-h-[92vh] overflow-y-auto rounded-t-2xl border-t-2 border-black bg-[#fffaf0] p-4 pb-6">
             {!synthesisTargetEntry ? (
               <>
                 <p className="mb-1 font-bold text-black">合成：残す方を選ぶ</p>
