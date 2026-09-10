@@ -11,10 +11,16 @@ export const CURRENCY_UNIT = "モラ";
 
 export interface GlobalSaveData {
   currency: number;
+  // BGM・効果音のON/OFF設定（全ゲーム共有、ホーム画面の「設定」から切り替える）。
+  // 効果音自体はまだ実装していないが、設定UI・保存先だけ先に用意している。
+  bgmEnabled: boolean;
+  seEnabled: boolean;
 }
 
 const defaultGlobalData: GlobalSaveData = {
   currency: 0,
+  bgmEnabled: true,
+  seEnabled: true,
 };
 
 function clampCurrency(value: number): number {

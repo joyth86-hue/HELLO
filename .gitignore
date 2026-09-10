@@ -39,6 +39,9 @@ yarn-error.log*
 # 作業用の画像置き場（本番で使う画像は public/characters にコピーして管理する）
 /サンプル画像
 
+# 作業用のBGM置き場（使う曲だけ public/audio にコピーして管理する。docs/spec/audio.md参照）
+/音楽
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

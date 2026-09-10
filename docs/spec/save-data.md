@@ -18,6 +18,8 @@
 ```ts
 interface GlobalSaveData {
   currency: number; // 共通通貨（モラ）
+  bgmEnabled: boolean; // BGMのON/OFF設定
+  seEnabled: boolean; // 効果音のON/OFF設定（効果音自体は未実装、設定項目のみ先行）
 }
 ```
 
@@ -30,6 +32,10 @@ interface GlobalSaveData {
 - `addCurrency(amount)` で増減し、戻り値として更新後のデータを受け取れる
 - 表示用に `formatCurrency(amount)` で「12,345 モラ」のような3桁区切り＋単位の文字列に変換できる
 - **全ゲームで共有**。Game 1で稼いだ通貨をGame 2やGame 3でも参照・消費できるようにする、というのがこの仕組みの目的
+
+### BGM・効果音のON/OFF（`bgmEnabled`/`seEnabled`）
+
+通貨と同じく**全ゲーム共有**のデータ。ホーム画面の「設定」から切り替える（詳細は[audio.md](./audio.md)、[game1-home.md](./screens/game1-home.md#設定)参照）。デフォルトは両方`true`。
 
 ## ゲームごとのデータ
 

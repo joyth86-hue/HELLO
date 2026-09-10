@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatCurrency, loadGlobalData } from "@/lib/storage";
+import { formatCurrency, loadGlobalData, saveGlobalData } from "@/lib/storage";
 import { loadGame1Data, saveGame1Data, type Game1SaveData } from "@/lib/game1-data";
 import { TEST_MODE_CODE } from "@/lib/test-mode";
 import { stickerButton } from "@/lib/ui";
 import { useRequireSplashEntry } from "@/lib/entry-guard";
 import TestModeBadge from "@/components/TestModeBadge";
+import BgmPlayer from "@/components/BgmPlayer";
+import ToggleSwitch from "@/components/ToggleSwitch";
 import {
   claimMission,
   getEffectiveDailyMissions,
@@ -21,11 +23,15 @@ import {
 // パーティ編成の仕組みがまだ無いため、現状はテストとしてhome_04で固定。
 const HOME_BACKGROUND = "/backgrounds/home/home_04_akane_koyuki_kaede_sayumi.png";
 
+// ホーム画面のBGM。docs/spec/audio.md参照。元データは音楽フォルダ（このアプリの
+// リポジトリ内、ユーザーが随時追加していく置き場）の「穏やかなとき.mp3」。
+const HOME_BGM_SRC = "/audio/bgm/odayakana-toki.mp3";
+
 // 画面右端・カエデの横の空きスペースに縦に並べる導線ボタン（上から順）。
 // アイコンは共通UIボタン素材（docs/spec/ui-buttons.md）から。プレゼントは
 // 「コードを入力」シート（本来はギフトコード引き換え用。合言葉を入れると
-// テストモードが切り替わる）、デイリーミッションはミッションシートを開く。
-// 残り2つ（図鑑・設定）は配置のみでまだ何も起きない。
+// テストモードが切り替わる）、デイリーミッションはミッションシート、設定は
+// BGM/効果音のON/OFFシートを開く。残り1つ（図鑑）は配置のみでまだ何も起きない。
 const HOME_SIDE_BUTTONS = [
   { key: "present", label: "プレゼント", icon: "/icons/buttons/ui_present.png" },
   { key: "daily_missions", label: "デイリーミッション", icon: "/icons/buttons/ui_daily_missions.png" },
@@ -45,9 +51,15 @@ export default function Game1HomePage() {
   // 受取ボタンを押した直後、報酬を戦闘結果フレームと同じ見た目のポップアップで
   // 見せるための状態（ミッションシートの上にさらに重ねて表示する）。
   const [claimedMission, setClaimedMission] = useState<MissionListEntry | null>(null);
+  const [showSettingsSheet, setShowSettingsSheet] = useState(false);
+  const [bgmEnabled, setBgmEnabled] = useState(true);
+  const [seEnabled, setSeEnabled] = useState(true);
 
   useEffect(() => {
-    setCurrency(loadGlobalData().currency);
+    const globalData = loadGlobalData();
+    setCurrency(globalData.currency);
+    setBgmEnabled(globalData.bgmEnabled);
+    setSeEnabled(globalData.seEnabled);
 
     const data = loadGame1Data();
     // デイリーミッションの「ログインボーナス」は、ここ（ホーム画面を開いた
@@ -81,6 +93,16 @@ export default function Game1HomePage() {
     }
   }
 
+  function handleBgmToggle(next: boolean) {
+    setBgmEnabled(next);
+    saveGlobalData({ ...loadGlobalData(), bgmEnabled: next });
+  }
+
+  function handleSeToggle(next: boolean) {
+    setSeEnabled(next);
+    saveGlobalData({ ...loadGlobalData(), seEnabled: next });
+  }
+
   function handleClaimMission(key: MissionKey) {
     if (!saveData) return;
     const next = claimMission(saveData, key);
@@ -98,6 +120,7 @@ export default function Game1HomePage() {
 
   return (
     <div className="relative h-[100dvh] overflow-hidden bg-background">
+      <BgmPlayer src={HOME_BGM_SRC} enabled={bgmEnabled} />
       <img
         src={HOME_BACKGROUND}
         alt=""
@@ -130,7 +153,9 @@ export default function Game1HomePage() {
               ? openCodeSheet
               : btn.key === "daily_missions"
                 ? () => setShowMissionSheet(true)
-                : undefined;
+                : btn.key === "settings"
+                  ? () => setShowSettingsSheet(true)
+                  : undefined;
           return (
             <button key={btn.key} aria-label={btn.label} onClick={onClick}>
               <img
@@ -267,6 +292,38 @@ export default function Game1HomePage() {
             <p className="mt-3 text-center text-[10px] font-bold text-[#b8b3d9]">タップして閉じる</p>
           </div>
         </div>
+      )}
+
+      {showSettingsSheet && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/45"
+            onClick={() => setShowSettingsSheet(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-x-0 bottom-0 z-[61] rounded-t-2xl border-t-2 border-black bg-[#fffaf0] p-4 pb-6">
+            <p className="mb-3 font-bold text-black">設定</p>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between rounded-xl border-2 border-zinc-300 bg-white p-3">
+                <span className="text-sm font-bold text-black">BGM</span>
+                <ToggleSwitch checked={bgmEnabled} onChange={handleBgmToggle} label="BGM" />
+              </div>
+              <div className="flex items-center justify-between rounded-xl border-2 border-zinc-300 bg-white p-3">
+                <div>
+                  <span className="text-sm font-bold text-black">効果音</span>
+                  <p className="text-[10px] text-zinc-500">未実装のため、今はON/OFFの設定のみ反映されます</p>
+                </div>
+                <ToggleSwitch checked={seEnabled} onChange={handleSeToggle} label="効果音" />
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSettingsSheet(false)}
+              className="mt-4 w-full rounded-full border-2 border-zinc-300 py-2 text-sm font-bold text-zinc-600"
+            >
+              閉じる
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
