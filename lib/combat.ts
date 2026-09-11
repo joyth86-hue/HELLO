@@ -1,8 +1,7 @@
 // ダメージ計算式。docs/spec/adventure-system.md参照（Artifactの
 // 「2. ダメージ計算式（案）」）。
 //
-// 属性相性表はまだ未定のため、属性倍率は一旦なし（常に×1.0固定）としている
-// （ユーザー確認済み）。表が決まり次第getElementMultiplierの中身だけ差し替える。
+// 属性相性はgetElementMultiplier()の輪（ユーザー確認済み）を参照。
 
 import type { SkillElement } from "./skills-info";
 
@@ -17,12 +16,28 @@ export interface DamageResult {
   isCrit: boolean;
 }
 
-// 属性相性倍率。相性表が決まるまでは常に1.0固定（ユーザー確認済み）。
-// 通常攻撃は属性を持たない（attackerElement=null）ため、常にこの1.0固定ルートを通る。
+// 属性相性の輪（ユーザー確認済み）：矢印の先が弱点＝有利に攻撃できる相手。
+// 水→炎→氷→草→岩→水
+// この輪で直接つながっている（隣り合う）属性同士にだけ有利・不利の倍率を持たせ、
+// それ以外の組み合わせ（2つ離れた属性・同じ属性）は等倍1.0のまま。
+const ELEMENT_ADVANTAGE_CYCLE: SkillElement[] = ["水", "炎", "氷", "草", "岩"];
+const ELEMENT_ADVANTAGE_MULTIPLIER = 1.25;
+const ELEMENT_DISADVANTAGE_MULTIPLIER = 0.75;
+
+// 属性相性倍率。通常攻撃は属性を持たない（attackerElement=null）ため、
+// どちらかがnullの場合は常に1.0固定のままになる。
 export function getElementMultiplier(
-  _attackerElement: SkillElement,
-  _defenderElement: SkillElement
+  attackerElement: SkillElement,
+  defenderElement: SkillElement
 ): number {
+  if (!attackerElement || !defenderElement) return 1.0;
+  const attackerIndex = ELEMENT_ADVANTAGE_CYCLE.indexOf(attackerElement);
+  const defenderIndex = ELEMENT_ADVANTAGE_CYCLE.indexOf(defenderElement);
+  if (attackerIndex === -1 || defenderIndex === -1) return 1.0;
+
+  const cycleLength = ELEMENT_ADVANTAGE_CYCLE.length;
+  if ((attackerIndex + 1) % cycleLength === defenderIndex) return ELEMENT_ADVANTAGE_MULTIPLIER;
+  if ((defenderIndex + 1) % cycleLength === attackerIndex) return ELEMENT_DISADVANTAGE_MULTIPLIER;
   return 1.0;
 }
 
