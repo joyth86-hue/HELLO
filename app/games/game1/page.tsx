@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBackgroundImage } from "@/lib/background";
 import { useRequireSplashEntry } from "@/lib/entry-guard";
 import { loadGlobalData } from "@/lib/storage";
 import { START_BGM } from "@/lib/audio-tracks";
-import BgmPlayer from "@/components/BgmPlayer";
+import BgmPlayer, { type BgmPlayerHandle } from "@/components/BgmPlayer";
 
 type Stage = "initial" | "bg" | "logo" | "ready" | "loading";
 
@@ -20,6 +20,7 @@ export default function Game1StartPage() {
   const [background, setBackground] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("initial");
   const [bgmEnabled, setBgmEnabled] = useState(true);
+  const bgmRef = useRef<BgmPlayerHandle>(null);
 
   useEffect(() => {
     setBgmEnabled(loadGlobalData().bgmEnabled);
@@ -37,6 +38,11 @@ export default function Game1StartPage() {
   }, [router]);
 
   const handleTap = () => {
+    // マウント時点（スプラッシュからの自動遷移直後）ではまだ一度もユーザー操作が
+    // 無く、ブラウザの自動再生ポリシーでBGMの再生が拒否されていることがある。
+    // この画面で最初に起きる本物のタップ操作の中でリトライすることで、
+    // その拒否を回避する（ready状態になる前のタップでも呼んでおく）。
+    bgmRef.current?.resume();
     if (stage !== "ready") return;
     setStage("loading");
     window.setTimeout(() => {
@@ -53,7 +59,7 @@ export default function Game1StartPage() {
       className={`relative h-[100dvh] w-full touch-none overflow-hidden bg-white ${stage === "ready" ? "cursor-pointer" : ""}`}
       onClick={handleTap}
     >
-      <BgmPlayer src={START_BGM} enabled={bgmEnabled} />
+      <BgmPlayer ref={bgmRef} src={START_BGM} enabled={bgmEnabled} />
       {background && (
         <img
           src={background}
