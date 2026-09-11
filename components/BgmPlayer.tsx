@@ -49,7 +49,10 @@ const BgmPlayer = forwardRef<BgmPlayerHandle, { src: string; enabled: boolean }>
       } else {
         audio.pause();
       }
-    }, [enabled]);
+      // srcもdepsに含める：srcが変わると上のuseEffectで新しいAudioに差し替わるが、
+      // このuseEffect自体はenabledの変化にしか反応しないため、srcを外すと
+      // 曲の切り替え（戦闘中のボス戦BGM等）が無音のまま再生されない不具合になる。
+    }, [enabled, src]);
 
     useImperativeHandle(ref, () => ({
       resume: () => {
