@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import GameBackground from "@/components/GameBackground";
+import BgmPlayer from "@/components/BgmPlayer";
 import { rollGachaItem } from "@/lib/item-drop";
 import { getItemBaseInfo, RARITY_COLOR, type ItemBaseInfo, type ItemRarity } from "@/lib/items-info";
 import { addItemsToInventory, loadGame1Data, saveGame1Data, type Game1SaveData } from "@/lib/game1-data";
+import { loadGlobalData } from "@/lib/storage";
+import { SHOP_BGM } from "@/lib/audio-tracks";
 
 // 武器ガチャ画面。docs/spec/screens/shop.md参照。
 // ショップタブ＝ガチャ画面という位置づけ。ガチャチケット（デイリーミッション報酬で
@@ -54,12 +57,14 @@ export default function ShopPage() {
   const [frame, setFrame] = useState(0);
   const [obtainedItem, setObtainedItem] = useState<ItemBaseInfo | null>(null);
   const [bagFull, setBagFull] = useState(false);
+  const [bgmEnabled, setBgmEnabled] = useState(true);
   const playingRef = useRef(false);
   // レア度ごとの全フレームの先読み結果（一度読み終わっていれば再利用する）。
   const preloadedRef = useRef<Partial<Record<ItemRarity, Promise<void[]>>>>({});
 
   useEffect(() => {
     setSaveData(loadGame1Data());
+    setBgmEnabled(loadGlobalData().bgmEnabled);
   }, []);
 
   function preloadRarity(r: ItemRarity): Promise<void[]> {
@@ -119,6 +124,7 @@ export default function ShopPage() {
   return (
     <div className="relative flex h-[100dvh] flex-col items-center overflow-hidden bg-background">
       <GameBackground />
+      <BgmPlayer src={SHOP_BGM} enabled={bgmEnabled} />
 
       <div className="relative z-10 flex h-full w-full flex-col items-center justify-center gap-6 px-6 pb-24">
         <div className="flex flex-col items-center gap-1">

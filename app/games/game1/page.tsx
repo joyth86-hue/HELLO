@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBackgroundImage } from "@/lib/background";
 import { useRequireSplashEntry } from "@/lib/entry-guard";
+import { loadGlobalData } from "@/lib/storage";
+import { START_BGM } from "@/lib/audio-tracks";
+import BgmPlayer from "@/components/BgmPlayer";
 
 type Stage = "initial" | "bg" | "logo" | "ready" | "loading";
 
@@ -16,8 +19,10 @@ export default function Game1StartPage() {
   const ready = useRequireSplashEntry();
   const [background, setBackground] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("initial");
+  const [bgmEnabled, setBgmEnabled] = useState(true);
 
   useEffect(() => {
+    setBgmEnabled(loadGlobalData().bgmEnabled);
     setBackground(getBackgroundImage(new Date()));
     router.prefetch("/games/game1/home");
 
@@ -48,6 +53,7 @@ export default function Game1StartPage() {
       className={`relative h-[100dvh] w-full touch-none overflow-hidden bg-white ${stage === "ready" ? "cursor-pointer" : ""}`}
       onClick={handleTap}
     >
+      <BgmPlayer src={START_BGM} enabled={bgmEnabled} />
       {background && (
         <img
           src={background}

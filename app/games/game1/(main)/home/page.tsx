@@ -10,6 +10,7 @@ import { useRequireSplashEntry } from "@/lib/entry-guard";
 import TestModeBadge from "@/components/TestModeBadge";
 import BgmPlayer from "@/components/BgmPlayer";
 import ToggleSwitch from "@/components/ToggleSwitch";
+import { HOME_BGM } from "@/lib/audio-tracks";
 import {
   claimMission,
   getEffectiveDailyMissions,
@@ -22,10 +23,6 @@ import {
 // 仲間が増えるたびに背景も賑やかになる想定（home_01=1人〜home_04=4人）。
 // パーティ編成の仕組みがまだ無いため、現状はテストとしてhome_04で固定。
 const HOME_BACKGROUND = "/backgrounds/home/home_04_akane_koyuki_kaede_sayumi.png";
-
-// ホーム画面のBGM。docs/spec/audio.md参照。元データは音楽フォルダ（このアプリの
-// リポジトリ内、ユーザーが随時追加していく置き場）の「穏やかなとき.mp3」。
-const HOME_BGM_SRC = "/audio/bgm/odayakana-toki.mp3";
 
 // 画面右端・カエデの横の空きスペースに縦に並べる導線ボタン（上から順）。
 // アイコンは共通UIボタン素材（docs/spec/ui-buttons.md）から。プレゼントは
@@ -120,7 +117,7 @@ export default function Game1HomePage() {
 
   return (
     <div className="relative h-[100dvh] overflow-hidden bg-background">
-      <BgmPlayer src={HOME_BGM_SRC} enabled={bgmEnabled} />
+      <BgmPlayer src={HOME_BGM} enabled={bgmEnabled} />
       <img
         src={HOME_BACKGROUND}
         alt=""

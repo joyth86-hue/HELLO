@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { loadGame1Data, type Game1SaveData } from "@/lib/game1-data";
 import { getEffectiveGame1Data } from "@/lib/test-mode";
+import { loadGlobalData } from "@/lib/storage";
+import { STAGE_SELECT_BGM } from "@/lib/audio-tracks";
 import GameBackground from "@/components/GameBackground";
 import TestModeBadge from "@/components/TestModeBadge";
+import BgmPlayer from "@/components/BgmPlayer";
 
 // 選べるステージ：クリア済みの全ステージ＋未クリアの最新1ステージのみ。
 // 詳細はdocs/spec/screens/adventure.md参照。まだシンプルな一覧のみで、
@@ -13,9 +16,11 @@ import TestModeBadge from "@/components/TestModeBadge";
 // 戦闘テスト画面に遷移するだけの仮実装）。
 export default function StageSelectPage() {
   const [saveData, setSaveData] = useState<Game1SaveData | null>(null);
+  const [bgmEnabled, setBgmEnabled] = useState(true);
 
   useEffect(() => {
     setSaveData(loadGame1Data());
+    setBgmEnabled(loadGlobalData().bgmEnabled);
   }, []);
 
   const effectiveData = saveData ? getEffectiveGame1Data(saveData) : null;
@@ -26,6 +31,7 @@ export default function StageSelectPage() {
   return (
     <div className="relative h-[100dvh] overflow-hidden bg-background">
       <GameBackground />
+      <BgmPlayer src={STAGE_SELECT_BGM} enabled={bgmEnabled} />
 
       {saveData?.testMode && (
         <TestModeBadge className="absolute right-4 top-[calc(1rem_+_env(safe-area-inset-top))]" />

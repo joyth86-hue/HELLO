@@ -40,6 +40,14 @@ import {
   SKILL_POINTS_PER_STAGE_CLEAR,
 } from "@/lib/skill-progression";
 import { addBattleWins, addStageClear } from "@/lib/daily-missions";
+import { loadGlobalData } from "@/lib/storage";
+import {
+  getNormalBattleBgmForStage,
+  pickRandomBossBattleBgm,
+  STAGE_CLEAR_BGM,
+  DEFEAT_BGM,
+} from "@/lib/audio-tracks";
+import BgmPlayer from "@/components/BgmPlayer";
 
 // 本実装のステージ内10バトル連戦（S-1〜S-10）。詳細はdocs/spec/screens/battle.md参照。
 // ステージ選択画面（/games/game1/stages）からは ?stage=N 付きで遷移してくる。
@@ -254,6 +262,10 @@ export default function BattlePage() {
   const [turnMessage, setTurnMessage] = useState("");
   const [stageLabel, setStageLabel] = useState(1);
   const [subBattleLabel, setSubBattleLabel] = useState(1);
+  const [bgmEnabled, setBgmEnabled] = useState(true);
+  // ボス以外はステージ固定・ボス戦はランダム・クリア/全滅では専用曲に切り替える
+  // （docs/spec/audio.md参照）。stageが確定するまではnullで無音のまま。
+  const [bgmSrc, setBgmSrc] = useState<string | null>(null);
   const [expEarned, setExpEarned] = useState(0);
   const [skillPointsEarned, setSkillPointsEarned] = useState(0);
   const [droppedItemSummary, setDroppedItemSummary] = useState<
@@ -646,6 +658,7 @@ export default function BattlePage() {
       for (let sub = 1; sub <= BATTLES_PER_STAGE; sub++) {
         setSubBattleLabel(sub);
         const isBoss = sub === BATTLES_PER_STAGE;
+        if (isBoss) setBgmSrc(pickRandomBossBattleBgm());
         const enemies = buildEnemyUnits(stage, isBoss);
         unitsRef.current = [...allies, ...enemies];
         sync();
@@ -658,6 +671,7 @@ export default function BattlePage() {
             .filter((u) => u.side === "enemy" && !u.alive)
             .reduce((sum, u) => sum + u.exp, 0);
           commitRewards(totalExp + partialExp, droppedItems, stage, false, subBattleWins);
+          setBgmSrc(DEFEAT_BGM);
           setResult("defeat");
           return;
         }
@@ -676,6 +690,7 @@ export default function BattlePage() {
 
       // S-10（ボス）を撃破：ステージクリア
       commitRewards(totalExp, droppedItems, stage, true, subBattleWins);
+      setBgmSrc(STAGE_CLEAR_BGM);
       setResult("clear");
     } catch (err) {
       // 想定外のエラーで進行不能になった場合に、無言のまま固まるのを避ける保険。
@@ -690,6 +705,8 @@ export default function BattlePage() {
     const resolvedStage = Number.isFinite(stage) && stage > 0 ? stage : 1;
     stageNumberRef.current = resolvedStage;
     setStageLabel(resolvedStage);
+    setBgmEnabled(loadGlobalData().bgmEnabled);
+    setBgmSrc(getNormalBattleBgmForStage(resolvedStage));
 
     if (startedRef.current) return;
     startedRef.current = true;
@@ -729,6 +746,7 @@ export default function BattlePage() {
 
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden bg-black">
+      {bgmSrc && <BgmPlayer src={bgmSrc} enabled={bgmEnabled} />}
       <img
         src={background}
         alt=""
