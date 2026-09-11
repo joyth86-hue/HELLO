@@ -94,6 +94,7 @@ interface BattleUnit {
   def: number;
   critRateBonus: number; // 装備による会心率加算（フラクション。敵は常に0）
   critDamageBonus: number; // 装備による会心ダメージ加算（フラクション。敵は常に0）
+  elementResistPoints: number; // 装備（ブローチ）による属性耐性pt。敵は常に0
   exp: number; // 敵のみ使用（倒したときに加算する経験値）
   alive: boolean;
   pose: Pose;
@@ -193,6 +194,7 @@ function buildAllyUnits(partyIds: string[], saveData: Game1SaveData): BattleUnit
       def: stats.def,
       critRateBonus: bonus.critRatePoints / 100,
       critDamageBonus: bonus.critDamagePoints / 100,
+      elementResistPoints: bonus.elementResistPoints,
       exp: 0,
       alive: true,
       pose: "idle",
@@ -226,6 +228,7 @@ function buildEnemyUnits(stage: number, isBoss: boolean): BattleUnit[] {
       def: scaled.def,
       critRateBonus: 0,
       critDamageBonus: 0,
+      elementResistPoints: 0,
       exp: scaled.exp,
       alive: true,
       pose: "idle",
@@ -343,7 +346,8 @@ export default function BattlePage() {
       attacker.critDamageBonus,
       skillBaseValue,
       element,
-      defenderElement
+      defenderElement,
+      target.elementResistPoints
     );
 
     attacker.stepped = true;
@@ -402,7 +406,8 @@ export default function BattlePage() {
           attacker.critDamageBonus,
           skillBaseValue,
           element,
-          defenderElement
+          defenderElement,
+          target.elementResistPoints
         );
 
         target.hp = Math.max(0, target.hp - damage);
