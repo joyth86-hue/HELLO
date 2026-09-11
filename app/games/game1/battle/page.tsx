@@ -113,6 +113,9 @@ interface BattleUnit {
   exp: number; // 敵のみ使用（倒したときに加算する経験値）
   alive: boolean;
   pose: Pose;
+  // pose==="attack"の間だけ意味を持つ、味方の攻撃アニメーションの現在フレーム
+  // （0〜5）。敵は常に0のまま（敵は静止画のattackポーズを使うため）。
+  attackFrame: number;
   stepped: boolean;
   popupPhase: PopupPhase;
   popupKind: PopupKind;
@@ -146,10 +149,20 @@ function tempoWait(ms: number) {
 }
 
 function poseAsset(unit: BattleUnit): string {
-  const assets =
-    unit.side === "ally"
-      ? getCharacterBaseInfo(unit.id)?.assets
-      : getEnemyBaseInfo(unit.id)?.assets;
+  // 味方の攻撃時は6フレームのアニメーションを再生する（敵は引き続き静止画）。
+  // 元データ：hirogames_images/docs/CLAUDE_HANDOFF_BATTLE_ATTACK_ANIMATIONS.md
+  if (unit.side === "ally") {
+    const assets = getCharacterBaseInfo(unit.id)?.assets;
+    if (!assets) return "";
+    if (unit.pose === "attack") {
+      const frames = assets.attackAnimation.frames;
+      return frames[unit.attackFrame] ?? frames[0];
+    }
+    if (unit.pose === "damage") return assets.battleDamage;
+    return assets.battleIdle;
+  }
+
+  const assets = getEnemyBaseInfo(unit.id)?.assets;
   if (!assets) return "";
   if (unit.pose === "attack") return assets.battleAttack;
   if (unit.pose === "damage") return assets.battleDamage;
@@ -213,6 +226,7 @@ function buildAllyUnits(partyIds: string[], saveData: Game1SaveData): BattleUnit
       exp: 0,
       alive: true,
       pose: "idle",
+      attackFrame: 0,
       stepped: false,
       popupPhase: "hidden",
       popupKind: "damage",
@@ -247,6 +261,7 @@ function buildEnemyUnits(stage: number, isBoss: boolean): BattleUnit[] {
       exp: scaled.exp,
       alive: true,
       pose: "idle",
+      attackFrame: 0,
       stepped: false,
       popupPhase: "hidden",
       popupKind: "damage",
@@ -343,6 +358,33 @@ export default function BattlePage() {
     sync();
   }
 
+  // 味方の攻撃アニメーションで、実際にダメージが発生した扱いにするフレーム
+  // （0始まり）。4キャラとも「攻撃を放つ」瞬間のフレームがindex4で揃っている
+  // （振り下ろす／氷を放つ／風を放つ／矢を放つ）ため、共通の定数で扱える。
+  const ATTACK_HIT_FRAME_INDEX = 4;
+
+  // 味方の攻撃アニメーション（6フレーム）を1回再生する。onHitは、命中フレーム
+  // （ATTACK_HIT_FRAME_INDEX）に達した時点で1回だけ呼ばれる（ダメージ反映・
+  // ポップアップ表示はそこで行う）。敵は静止画のみでアニメーションを持たないため
+  // このヘルパーは味方専用（呼び出し側でside==="ally"のときだけ使う）。
+  async function playAttackAnimation(attacker: BattleUnit, onHit: () => Promise<void>) {
+    const anim = getCharacterBaseInfo(attacker.id)?.assets.attackAnimation;
+    if (!anim) {
+      // 保険：本来は味方全員がアニメーションを持つ想定。
+      await tempoWait(300);
+      await onHit();
+      return;
+    }
+    for (let i = 0; i < anim.frames.length; i++) {
+      attacker.attackFrame = i;
+      sync();
+      if (i === ATTACK_HIT_FRAME_INDEX) {
+        await onHit();
+      }
+      await tempoWait(anim.durationsMs[i]);
+    }
+  }
+
   // 通常攻撃・スキル攻撃共通の1発分の処理。skillBaseValueは通常攻撃なら0、
   // elementは通常攻撃ならnull（通常攻撃は属性を持たない、ユーザー確認済み）。
   async function resolveHit(
@@ -375,13 +417,22 @@ export default function BattlePage() {
 
     attacker.pose = "attack";
     sync();
-    await tempoWait(300);
 
-    target.hp = Math.max(0, target.hp - damage);
-    target.alive = target.hp > 0;
-    await showPopup(targetKey, { kind: "damage", value: damage, crit: isCrit });
+    const applyHit = async () => {
+      target.hp = Math.max(0, target.hp - damage);
+      target.alive = target.hp > 0;
+      await showPopup(targetKey, { kind: "damage", value: damage, crit: isCrit });
+    };
+
+    if (attacker.side === "ally") {
+      await playAttackAnimation(attacker, applyHit);
+    } else {
+      await tempoWait(300);
+      await applyHit();
+    }
 
     attacker.pose = "idle";
+    attacker.attackFrame = 0;
     sync();
     await tempoWait(200);
     attacker.stepped = false;
@@ -407,35 +458,41 @@ export default function BattlePage() {
 
     attacker.pose = "attack";
     sync();
-    await tempoWait(300);
 
-    await Promise.all(
-      targetKeys.map(async (targetKey) => {
-        const target = getUnit(targetKey);
-        if (!target.alive) return;
+    const applyHits = async () => {
+      await Promise.all(
+        targetKeys.map(async (targetKey) => {
+          const target = getUnit(targetKey);
+          if (!target.alive) return;
 
-        const effectiveAtk = Math.round(attacker.atk * (1 + sumBuffFraction(attacker, "atk")));
-        const effectiveDef = Math.round(target.def * (1 + sumBuffFraction(target, "def")));
-        const defenderElement = target.side === "enemy" ? enemyElement(target.id) : null;
+          const effectiveAtk = Math.round(attacker.atk * (1 + sumBuffFraction(attacker, "atk")));
+          const effectiveDef = Math.round(target.def * (1 + sumBuffFraction(target, "def")));
+          const defenderElement = target.side === "enemy" ? enemyElement(target.id) : null;
 
-        const { damage, isCrit } = calculateDamage(
-          effectiveAtk,
-          effectiveDef,
-          attacker.critRateBonus + sumBuffFraction(attacker, "critRate"),
-          attacker.critDamageBonus,
-          skillBaseValue,
-          element,
-          defenderElement,
-          target.elementResistPoints
-        );
+          const { damage, isCrit } = calculateDamage(
+            effectiveAtk,
+            effectiveDef,
+            attacker.critRateBonus + sumBuffFraction(attacker, "critRate"),
+            attacker.critDamageBonus,
+            skillBaseValue,
+            element,
+            defenderElement,
+            target.elementResistPoints
+          );
 
-        target.hp = Math.max(0, target.hp - damage);
-        target.alive = target.hp > 0;
-        await showPopup(targetKey, { kind: "damage", value: damage, crit: isCrit });
-      })
-    );
+          target.hp = Math.max(0, target.hp - damage);
+          target.alive = target.hp > 0;
+          await showPopup(targetKey, { kind: "damage", value: damage, crit: isCrit });
+        })
+      );
+    };
+
+    // resolveAoeHitは敵全体スキル専用で、呼び出し元（performSkillAction）の
+    // 都合上、攻撃側は常に味方（プレイヤー操作側）になる。
+    await playAttackAnimation(attacker, applyHits);
 
     attacker.pose = "idle";
+    attacker.attackFrame = 0;
     sync();
     await tempoWait(200);
     attacker.stepped = false;

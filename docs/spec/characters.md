@@ -19,6 +19,16 @@
 
 [public/characters/idle/](../../public/characters/idle/) に `c{キャラID2桁}_idle_sheet.png` として1キャラ1枚のスプライトシートを置いている。素材は外部の画像制作リポジトリ（`hirogames_images`、`CHARACTER_SCREEN_ASSETS.md`が引継ぎ入口）で作られたもので、1コマ486×810px・8列×5行・40コマ・100ms間隔（4秒ループ）という仕様で4キャラ共通。表示側の実装詳細は[screens/character-view.md](./screens/character-view.md)を参照。
 
+### 戦闘画面用：攻撃アニメーション
+
+[public/characters/attack/](../../public/characters/attack/) に `c{キャラID2桁}_attack_{連番2桁}.png`（00〜05の6枚、1体につき）として置いている。素材は外部の画像制作リポジトリ（`hirogames_images/docs/CLAUDE_HANDOFF_BATTLE_ATTACK_ANIMATIONS.md`が引継ぎ入口）で作られたもので、それまで静止画1枚（`d02`）だった戦闘中の攻撃ポーズを、6フレームのアニメーションに差し替えたもの（ユーザー確認済み）。
+
+- 各フレームは512×512pxの透過PNG。1動作6フレーム、ループなしで1回再生し、終了後は通常ポーズ（`d01`）に戻る
+- フレームごとの表示時間（ms）はキャラごとに異なり、`lib/characters-info.ts`の`CharacterBaseInfo.assets.attackAnimation.durationsMs`に持たせている（[skills.md](./skills.md)の攻撃力バフ等とは無関係、演出のみのタイミング）
+- 4キャラとも、インデックス4（0始まり）が実際に攻撃が発生する瞬間のフレーム（振り下ろす／氷を放つ／風を放つ／矢を放つ）で統一されている。戦闘側の実装（[battle-test.md](./screens/battle-test.md)参照）は、この共通性を利用してダメージ反映のタイミングをフレーム4に固定している
+- `d02`（旧・静止画の攻撃ポーズ）は現在未使用だが、フォールバック用にファイル・データともに残している
+- 敵キャラクターの攻撃は対象外（引き続き静止画のまま）。敵側にも同様のアニメーションを作る場合は、この節と同じ構成で追加できる想定
+
 ## 画像の作り方
 
 Claude自身は画像生成AIを持たないため、キャラクター素材は外部の画像生成AI（NijiJourneyなど）でユーザー側が生成し、`WebApp_game/サンプル画像/` フォルダに置いてもらう運用にしている。
