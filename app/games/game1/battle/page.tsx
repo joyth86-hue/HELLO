@@ -70,11 +70,18 @@ function hpBarColor(ratio: number): string {
   return HP_BAR_COLOR_HIGH;
 }
 
-// 左右対称の配置。Artifactで検討したモックアップ（top 42/55/68%, 幅16%）と同じ値。
+// 左右対称の配置。Artifactで検討したモックアップの値（ユーザー確認済み）。
+// キャラをもう一回り大きく表示したい（幅16%→24%、1.5倍）という指示を受けて、
+// 元の位置（42/55/68%）から見た目のバランスを保ちつつ調整した：
+// - 1体目は地面の終わりかけ（地平線際）まで上げる、3体目は元の位置に近いまま、
+//   2体目は1・3体目のちょうど中間（目視確認済み）
+// - barTopはHPゲージ専用の固定位置（下記参照）。3体目のtopは68%のままだと、
+//   1.5倍サイズの敵画像（縦横比がキャラより大きい）とHPゲージ・下部の行動
+//   ボタンバーがぶつかってしまったため、68%→65%に微調整して余白を確保した
 const SLOT_POSITIONS = [
-  { top: "42%", z: 3 },
-  { top: "55%", z: 2 },
-  { top: "68%", z: 1 },
+  { top: "15%", barTop: "35.7%", z: 3 },
+  { top: "41.5%", barTop: "62.2%", z: 2 },
+  { top: "65%", barTop: "85.7%", z: 1 },
 ];
 // 敵1体（ボス戦）のときは中央のスロットに配置する。
 const BOSS_SLOT_INDEX = 1;
@@ -779,11 +786,11 @@ export default function BattlePage() {
         return (
           <div
             key={unit.key}
-            className="absolute flex flex-col items-center"
+            className="absolute"
             style={{
               [sideKey]: "6%",
               top: pos.top,
-              width: "16%",
+              width: "24%",
               zIndex: pos.z,
               opacity: unit.alive ? 1 : 0.25,
               transition: "opacity 300ms ease-out",
@@ -821,18 +828,40 @@ export default function BattlePage() {
                 draggable={false}
               />
             </div>
-            {/* HPは実数値（unit.hp/unit.maxHp）を内部で保持しつつ、表示はゲージの
-                長さだけで表現する（名前・数値表示の枠がキャラと重なって見づらかった
-                ため撤去、ユーザー確認済み）。 */}
-            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/55">
-              <div
-                className="h-full rounded-full transition-[width] duration-300 ease-out"
-                style={{
-                  width: `${Math.max(0, Math.min(100, (unit.hp / unit.maxHp) * 100))}%`,
-                  backgroundColor: hpBarColor(unit.hp / unit.maxHp),
-                }}
-              />
-            </div>
+          </div>
+        );
+      })}
+
+      {/* HPゲージは画像の高さに引きずられないよう、キャラ本体とは別に
+          スロットごとの固定位置（barTop）に独立して配置する。ally/enemyで
+          画像の縦横比が異なる（敵の方が縦に長い）ため、画像の直下（mt-1）に
+          置く実装だと同じスロットでも縦位置がずれ、1.5倍サイズ化した際に
+          3体目（奥）のゲージが下部の行動ボタンバーと被ってしまっていた
+          （ユーザー指摘・実測で確認済み）。barTopは敵画像（縦横比が大きい方）
+          が入っても画像と被らない位置を基準に、スロットごとに固定値で決めている。 */}
+      {units.map((unit) => {
+        const pos = SLOT_POSITIONS[unit.slot];
+        const sideKey = unit.side === "ally" ? "left" : "right";
+        return (
+          <div
+            key={`${unit.key}-bar`}
+            className="absolute h-1.5 w-full overflow-hidden rounded-full bg-black/55"
+            style={{
+              [sideKey]: "6%",
+              top: pos.barTop,
+              width: "24%",
+              zIndex: pos.z,
+              opacity: unit.alive ? 1 : 0.25,
+              transition: "opacity 300ms ease-out",
+            } as React.CSSProperties}
+          >
+            <div
+              className="h-full rounded-full transition-[width] duration-300 ease-out"
+              style={{
+                width: `${Math.max(0, Math.min(100, (unit.hp / unit.maxHp) * 100))}%`,
+                backgroundColor: hpBarColor(unit.hp / unit.maxHp),
+              }}
+            />
           </div>
         );
       })}
