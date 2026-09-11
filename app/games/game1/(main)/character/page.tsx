@@ -771,6 +771,9 @@ export default function CharacterViewPage() {
                 const plus = skillPlusLevel(skill.id, invested);
                 const remainingToNext = pointsToNextStep(skill.id, invested);
                 const canInvest = (saveData?.skillPoints ?? 0) >= SKILL_POINT_COST_PER_STEP;
+                // 支援・回復スキルは効果量が強化段階の影響を受けないため、解放後の
+                // さらなるポイント投入自体を無くしている（ユーザー確認済み）。
+                const scalable = skill.kind === "攻撃";
                 return (
                   <div
                     key={skill.id}
@@ -791,7 +794,8 @@ export default function CharacterViewPage() {
                       {unlocked ? (
                         <>
                           <p className="truncate text-sm font-bold text-black">
-                            {skill.name}　+{plus}
+                            {skill.name}
+                            {scalable ? `　+${plus}` : ""}
                           </p>
                           <p className="truncate text-[11px] text-zinc-500">{skill.description}</p>
                         </>
@@ -802,16 +806,22 @@ export default function CharacterViewPage() {
                         </>
                       )}
                     </div>
-                    <button
-                      onClick={() => submitSkillInvest(skill.id, unlocked)}
-                      disabled={!canInvest}
-                      className="flex-shrink-0 rounded-full border-2 border-black bg-[#c9c3ff] px-3 py-1.5 text-xs font-bold text-black disabled:opacity-40"
-                    >
-                      {unlocked ? "強化" : "解放"}
-                      <span className="ml-1 text-[10px] font-medium">
-                        ({remainingToNext}pt)
+                    {unlocked && !scalable ? (
+                      <span className="flex-shrink-0 rounded-full border-2 border-zinc-300 px-3 py-1.5 text-xs font-bold text-zinc-400">
+                        解放済み
                       </span>
-                    </button>
+                    ) : (
+                      <button
+                        onClick={() => submitSkillInvest(skill.id, unlocked)}
+                        disabled={!canInvest}
+                        className="flex-shrink-0 rounded-full border-2 border-black bg-[#c9c3ff] px-3 py-1.5 text-xs font-bold text-black disabled:opacity-40"
+                      >
+                        {unlocked ? "強化" : "解放"}
+                        <span className="ml-1 text-[10px] font-medium">
+                          ({remainingToNext}pt)
+                        </span>
+                      </button>
+                    )}
                   </div>
                 );
               })}
