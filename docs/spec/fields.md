@@ -29,6 +29,27 @@
 
 コピー漏れを防ぐため、ファイルを拾う際は `f0*` のような桁数を仮定したパターンではなく、`f*` のように接頭辞のみで網羅的に検索すること（`f10` 以降が `f0*` では引っかからず一度取りこぼした実績あり）。
 
+## 地面拡張版への差し替え（v1）
+
+元データ: `C:\Users\田中宏樹\Documents\Codex\hirogames_images\assets\backgrounds\battle\ground_expanded_v1\`（このアプリのリポジトリ外にある画像制作用フォルダ、`README.md`に仕様あり）。
+
+キャラクターを配置できる地面のスペースが少なすぎるという指摘を受け、10種類すべてを「遠景（空・海・建物など）を上部20%に集約し、下部80%を地面として確保」した加工版（941×1672px）に差し替えた（ユーザー確認済み）。ファイル名・`f{連番2桁}`の対応関係・[lib/enemy-scaling.ts](../../lib/enemy-scaling.ts)の`getFieldImagePathForStage()`は変更していない（同じファイル名のまま中身だけ差し替え）。対応関係は以下の通り（元データ側のファイル名 → このアプリでのファイル名）。
+
+| 元データ | このアプリ |
+| --- | --- |
+| `grass_day.png` | `f01_sougen_hiru.png` |
+| `grass_night.png` | `f02_sougen_yoru.png` |
+| `town_day.png` | `f03_machi_hiru.png` |
+| `town_night.png` | `f04_machi_yoru.png` |
+| `wasteland.png` | `f05_arechi.png` |
+| `cave.png` | `f06_doukutsu.png` |
+| `forest.png` | `f07_shinrin.png` |
+| `volcano.png` | `f08_kazan.png` |
+| `beach_day.png` | `f09_kaigan_hiru.png` |
+| `beach_night.png` | `f10_kaigan_yoru.png` |
+
+この差し替えに合わせて、キャラクター・敵の表示サイズを大きくする調整を別途行う予定（本差し替えではファイルの入れ替えのみ行い、配置・サイズの調整はまだ行っていない）。
+
 ## 今後
 
 - 冒険の画面構成（戦闘のみ／探索フィールド＋戦闘の切り替え）が決まり次第、該当する画面の仕様書を追加し、ここからリンクする。
