@@ -366,6 +366,59 @@ export default function BattlePage() {
     await tempoWait(300);
   }
 
+  // 敵全体スキル用：1回の攻撃モーションで、生存中の対象全員に同時にダメージを
+  // 与える（対象ごとに踏み込み〜攻撃ポーズを繰り返すのではなく、一気に攻撃する
+  // 見た目にしたいというユーザー指定）。ダメージ計算・ポップアップ表示は対象ごとに
+  // 独立して行うが、それらをPromise.allでまとめて並行実行することで同時に見せる。
+  async function resolveAoeHit(
+    attackerKey: string,
+    targetKeys: string[],
+    skillBaseValue: number,
+    element: SkillElement
+  ) {
+    const attacker = getUnit(attackerKey);
+
+    attacker.stepped = true;
+    sync();
+    await tempoWait(300);
+
+    attacker.pose = "attack";
+    sync();
+    await tempoWait(300);
+
+    await Promise.all(
+      targetKeys.map(async (targetKey) => {
+        const target = getUnit(targetKey);
+        if (!target.alive) return;
+
+        const effectiveAtk = Math.round(attacker.atk * (1 + sumBuffFraction(attacker, "atk")));
+        const effectiveDef = Math.round(target.def * (1 + sumBuffFraction(target, "def")));
+        const defenderElement = target.side === "enemy" ? enemyElement(target.id) : null;
+
+        const { damage, isCrit } = calculateDamage(
+          effectiveAtk,
+          effectiveDef,
+          attacker.critRateBonus + sumBuffFraction(attacker, "critRate"),
+          attacker.critDamageBonus,
+          skillBaseValue,
+          element,
+          defenderElement
+        );
+
+        target.hp = Math.max(0, target.hp - damage);
+        target.alive = target.hp > 0;
+        await showPopup(targetKey, { kind: "damage", value: damage, crit: isCrit });
+      })
+    );
+
+    attacker.pose = "idle";
+    sync();
+    await tempoWait(200);
+    attacker.stepped = false;
+    sync();
+    await tempoWait(300);
+  }
+
   // スキルの発動（攻撃／支援／回復）。CTのセットもここで行う。
   async function performSkillAction(attackerKey: string, skill: SkillBaseInfo, plusLevel: number) {
     const attacker = getUnit(attackerKey);
@@ -379,13 +432,24 @@ export default function BattlePage() {
       : 0;
 
     if (skill.kind === "攻撃") {
-      const targets: BattleUnit[] =
-        skill.target === "敵全体"
-          ? unitsRef.current.filter((u) => u.side === "enemy" && u.alive)
-          : (() => {
-              const t = randomAliveTarget("enemy");
-              return t ? [t] : [];
-            })();
+      if (skill.target === "敵全体") {
+        const targetKeys = unitsRef.current
+          .filter((u) => u.side === "enemy" && u.alive)
+          .map((u) => u.key);
+
+        for (let hit = 0; hit < skill.hits; hit++) {
+          const aliveTargetKeys = targetKeys.filter((key) => getUnit(key).alive);
+          if (aliveTargetKeys.length === 0) break;
+          await resolveAoeHit(attackerKey, aliveTargetKeys, scaledBaseValue, skill.element);
+          if (skill.effect?.skipNextTurn) {
+            for (const key of aliveTargetKeys) getUnit(key).skipNextTurn = true;
+          }
+        }
+        return;
+      }
+
+      const target = randomAliveTarget("enemy");
+      const targets: BattleUnit[] = target ? [target] : [];
 
       for (const targetRef of targets) {
         for (let hit = 0; hit < skill.hits; hit++) {
