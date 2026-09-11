@@ -6,6 +6,22 @@ export interface AttackAnimation {
   frames: string[];
   // 各フレームの表示時間（ms）。tempoWait()でテンポ倍率をかけて使う。
   durationsMs: number[];
+  // 攻撃フレーム（512×512の正方形キャンバス）と通常ポーズ（971×1619、縦長）は
+  // キャラ本体がキャンバスに占める割合も、足元がキャンバスのどこにあるかも
+  // 全く異なる。そのため単純に同じ表示幅で重ねると、①足元の位置が通常ポーズより
+  // かなり上にズレ、②見た目の大きさも変わってしまう（ユーザー指摘・実測で確認済み。
+  // 「小さく見える」だけでなく「立ち位置がズレる」が本質的な原因だった）。
+  // 両ポーズの画像を解析し、①②とも通常ポーズに揃うように算出した値：
+  // - footShiftPercent：攻撃画像を下にずらす量（画像自身の高さに対する%）。
+  //   これで足元の位置を通常ポーズに合わせる
+  // - bodyScale：足元を基準に拡大する倍率。これで見た目の大きさを揃える
+  // - transformOriginY：スケールの基準点（画像自身の中の足元位置、%）。
+  //   ここを基準に拡大することで、拡大しても足元の位置がズレない
+  // 適用順は `transform: translateY(footShiftPercent%) scale(bodyScale)`、
+  // `transformOrigin: 50% transformOriginY%`。
+  footShiftPercent: number;
+  bodyScale: number;
+  transformOriginY: number;
 }
 
 export interface CharacterBaseInfo {
@@ -50,6 +66,9 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
           "/characters/attack/c01_attack_05.png",
         ],
         durationsMs: [500, 110, 110, 130, 75, 380],
+        footShiftPercent: 49.58,
+        bodyScale: 1.331,
+        transformOriginY: 95.12,
       },
     },
   },
@@ -74,6 +93,9 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
           "/characters/attack/c02_attack_05.png",
         ],
         durationsMs: [450, 140, 160, 220, 100, 360],
+        footShiftPercent: 61.31,
+        bodyScale: 1.701,
+        transformOriginY: 96.88,
       },
     },
   },
@@ -98,6 +120,9 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
           "/characters/attack/c03_attack_05.png",
         ],
         durationsMs: [450, 140, 140, 220, 90, 360],
+        footShiftPercent: 60.23,
+        bodyScale: 1.465,
+        transformOriginY: 95.9,
       },
     },
   },
@@ -122,6 +147,9 @@ export const CHARACTER_BASE_INFO: CharacterBaseInfo[] = [
           "/characters/attack/c04_attack_05.png",
         ],
         durationsMs: [420, 140, 140, 240, 70, 330],
+        footShiftPercent: 53.28,
+        bodyScale: 1.409,
+        transformOriginY: 94.92,
       },
     },
   },

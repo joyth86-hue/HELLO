@@ -883,6 +883,21 @@ export default function BattlePage() {
                 alt={unit.name}
                 className="w-full select-none object-contain"
                 draggable={false}
+                style={(() => {
+                  // 攻撃フレーム（512×512）は通常ポーズ（971×1619）と比べて、足元の
+                  // 位置も見た目の大きさも異なる（ユーザー指摘・実測で確認済み）。
+                  // footShiftPercentで足元の位置を通常ポーズに合わせてから、その
+                  // 足元（transformOriginY）を基準にbodyScale倍することで、足元を
+                  // 動かさずに大きさだけ揃える（詳細はlib/characters-info.tsの
+                  // AttackAnimationコメント参照）。
+                  if (unit.side !== "ally" || unit.pose !== "attack") return undefined;
+                  const anim = getCharacterBaseInfo(unit.id)?.assets.attackAnimation;
+                  if (!anim) return undefined;
+                  return {
+                    transform: `translateY(${anim.footShiftPercent}%) scale(${anim.bodyScale})`,
+                    transformOrigin: `50% ${anim.transformOriginY}%`,
+                  };
+                })()}
               />
             </div>
           </div>
