@@ -115,6 +115,17 @@
 
 実装: [lib/item-drop.ts](../../lib/item-drop.ts)。ドロップ確率・レアリティ抽選テーブルは[adventure-system.md](./adventure-system.md#アイテムドロップ)参照。レアリティが決まった後、どのアイテムになるかはそのレアリティの全アイテムから均等ランダム（武器種問わず）。
 
+## アイテム効果の確認（詳細ポップアップ）
+
+実装: [lib/item-effects.ts](../../lib/item-effects.ts)の`describeItemEffect(instance, item)`。個体（`ItemInstance`）とその基本情報から、実際に効いているステータスを「ステータス名：+数値」の一覧（`ItemEffectLine[]`）に変換する。中身は`calculateEquipmentBonus()`をそのまま再利用しており（武器ならweaponスロット、アーティファクトなら1枠に仮装備させた状態を作って渡す）、レア度・武器のばらつき・合成の＋値・武器のランダム追加能力（あれば）を含めた「装備した場合に実際どうなるか」と常に一致する。0の項目は表示しない。
+
+個体情報を持たない集計後の表示（戦闘結果のドロップ一覧など）では、`plus:0`・追加能力なしの仮インスタンス（`{instanceId:"preview", itemId, plus:0}`）を渡すことで、レア度なりの基礎効果だけを取り出せる。
+
+この効果一覧は、以下の画面で見た目を統一したポップアップ（不透明の`#241f47`カード、UI全体で使っている枠と共通のスタイル）として表示される。
+
+- [戦闘結果画面](./screens/battle-test.md)：獲得アイテムのアイコンをタップした時
+- [仲間（キャラクター）画面](./screens/character-view.md)：装備を切り替えた直後の確認ポップアップ
+
 ## 画面での利用
 
 所持しているアイテムを一覧表示する[バッグの中身画面](./screens/bag.md)（`/games/game1/bag`）で使用している。所持数の管理方法は[save-data.md](./save-data.md)の`Game1SaveData.inventory`を参照。

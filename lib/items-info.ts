@@ -16,6 +16,16 @@ export function rarityRank(rarity: ItemRarity): number {
   return RARITY_ORDER.indexOf(rarity);
 }
 
+// レア度ごとの表示色（ガチャ演出の主光色に合わせた仮の値）。ガチャ結果表示・
+// アイテム詳細ポップアップなど、レア度を色分けして見せる箇所で共通して使う。
+export const RARITY_COLOR: Record<ItemRarity, string> = {
+  C: "#dce2e8",
+  B: "#5be08a",
+  A: "#5fb1ff",
+  S: "#c983ff",
+  SS: "#ffc25c",
+};
+
 export interface ItemBaseInfo {
   id: string;
   name: string;

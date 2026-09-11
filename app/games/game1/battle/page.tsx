@@ -20,9 +20,13 @@ import {
   saveGame1Data,
   type Game1SaveData,
 } from "@/lib/game1-data";
-import { calculateEquipmentBonus, applyEquipmentBonusToStats } from "@/lib/item-effects";
+import {
+  calculateEquipmentBonus,
+  applyEquipmentBonusToStats,
+  describeItemEffect,
+} from "@/lib/item-effects";
 import { rollDropForBattle, type DroppedItem } from "@/lib/item-drop";
-import { getItemBaseInfo, type ItemBaseInfo } from "@/lib/items-info";
+import { getItemBaseInfo, RARITY_COLOR, type ItemBaseInfo } from "@/lib/items-info";
 import { SYNTHESIS_PLUS_STEP_PERCENT } from "@/lib/item-synthesis";
 import {
   getCharacterSkillKit,
@@ -256,6 +260,8 @@ export default function BattlePage() {
   // 結果画面の「ページ」。0=基本メッセージ、1以降=individualMessagesの該当インデックス。
   const [resultPage, setResultPage] = useState(0);
   const [individualMessages, setIndividualMessages] = useState<IndividualMessage[]>([]);
+  // 獲得アイテムのアイコンをタップした時に、効果を見せるためのポップアップ状態。
+  const [detailItem, setDetailItem] = useState<ItemBaseInfo | null>(null);
 
   const unitsRef = useRef<BattleUnit[]>([]);
   const startedRef = useRef(false);
@@ -782,12 +788,19 @@ export default function BattlePage() {
                   )}
                   {droppedItemSummary.length > 0 && (
                     <>
-                      <p className="mb-1.5 mt-2 text-[11px] font-bold text-[#b8b3d9]">獲得アイテム</p>
-                      <div className="flex flex-wrap gap-1.5">
+                      <p className="mb-1.5 mt-2 text-[11px] font-bold text-[#b8b3d9]">
+                        獲得アイテム（タップで効果を確認）
+                      </p>
+                      <div className="flex flex-wrap gap-2">
                         {droppedItemSummary.map(({ item, quantity }) => (
-                          <div
+                          <button
                             key={item.id}
-                            className="relative h-9 w-9 overflow-hidden rounded-lg border border-white/15"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDetailItem(item);
+                            }}
+                            className="relative h-16 w-16 overflow-hidden rounded-xl border-2"
+                            style={{ borderColor: RARITY_COLOR[item.rarity] }}
                           >
                             <img
                               src={item.asset}
@@ -795,11 +808,11 @@ export default function BattlePage() {
                               className="h-full w-full object-cover"
                             />
                             {quantity > 1 && (
-                              <span className="absolute bottom-0 right-0 rounded-tl bg-black/80 px-1 text-[8px] font-bold text-white">
+                              <span className="absolute bottom-0 right-0 rounded-tl bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white">
                                 ×{quantity}
                               </span>
                             )}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </>
@@ -849,6 +862,46 @@ export default function BattlePage() {
           </div>
         );
       })()}
+
+      {/* 獲得アイテムの効果確認ポップアップ。結果フレームより上（z-40）に重ねる。
+          集計後のitemIdだけしか持っていないため、plus0・追加能力無しの仮の個体で
+          効果を算出する（実際にドロップした個体の＋値・追加能力までは反映しない）。 */}
+      {detailItem && (
+        <div
+          className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 px-6"
+          onClick={() => setDetailItem(null)}
+        >
+          <div
+            className="w-full max-w-[300px] rounded-2xl border border-[rgba(201,195,255,0.5)] px-4 py-4 [box-shadow:0_8px_24px_rgba(0,0,0,0.45)]"
+            style={{ background: "#241f47" }}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <img
+                src={detailItem.asset}
+                alt={detailItem.name}
+                className="h-20 w-20 rounded-xl border-2 object-cover"
+                style={{ borderColor: RARITY_COLOR[detailItem.rarity] }}
+              />
+              <p className="text-center text-base font-extrabold text-[#eee9ff]">{detailItem.name}</p>
+              <p className="text-xs font-bold" style={{ color: RARITY_COLOR[detailItem.rarity] }}>
+                {detailItem.rarity}ランク
+              </p>
+            </div>
+            <div className="my-2.5 h-px bg-white/10" />
+            <div className="flex flex-col gap-1">
+              {describeItemEffect({ instanceId: "preview", itemId: detailItem.id, plus: 0 }, detailItem).map(
+                (line) => (
+                  <div key={line.label} className="flex justify-between text-xs font-bold">
+                    <span className="text-[#b8b3d9]">{line.label}</span>
+                    <span className="text-[#5be08a]">{line.value}</span>
+                  </div>
+                )
+              )}
+            </div>
+            <p className="mt-3 text-center text-[10px] font-bold text-[#b8b3d9]">タップして閉じる</p>
+          </div>
+        </div>
+      )}
 
       {awaitingPlayer && !result && (() => {
         const activeUnit = units.find((u) => u.key === activeKey);

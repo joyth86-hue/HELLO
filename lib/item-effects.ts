@@ -178,6 +178,38 @@ export function calculateEquipmentBonus(
   return totals;
 }
 
+export interface ItemEffectLine {
+  label: string;
+  value: string;
+}
+
+// 1個体分の効果を「ステータス名：+数値」の表示用リストにする（0のものは省く）。
+// 武器ならweaponスロット、アーティファクトなら1枠に仮装備させた状態として
+// calculateEquipmentBonus()を呼ぶことで、レア度・武器のばらつき・合成の＋値・
+// 武器のランダム追加能力（あれば）を全て反映した実際の効果を再利用できる。
+// itemInstanceに実在するinstanceIdが無くても（例：ドロップ結果一覧のような
+// 集計後のitemIdだけの表示）、plus:0・substat無しの仮インスタンスを渡せば
+// レア度なりの基礎効果だけを取り出せる。
+export function describeItemEffect(instance: ItemInstance, item: ItemBaseInfo): ItemEffectLine[] {
+  const equipment: CharacterEquipment =
+    item.type === "アーティファクト"
+      ? { weapon: null, artifacts: [instance.instanceId, null, null] }
+      : { weapon: instance.instanceId, artifacts: [null, null, null] };
+  const totals = calculateEquipmentBonus(equipment, [instance]);
+
+  const lines: ItemEffectLine[] = [];
+  if (totals.hpPercent > 0) lines.push({ label: "HP", value: `+${(totals.hpPercent * 100).toFixed(1)}%` });
+  if (totals.atkPercent > 0) lines.push({ label: "攻撃力", value: `+${(totals.atkPercent * 100).toFixed(1)}%` });
+  if (totals.atkFlat > 0) lines.push({ label: "攻撃力", value: `+${Math.round(totals.atkFlat)}` });
+  if (totals.defPercent > 0) lines.push({ label: "防御力", value: `+${(totals.defPercent * 100).toFixed(1)}%` });
+  if (totals.critRatePoints > 0) lines.push({ label: "会心率", value: `+${totals.critRatePoints.toFixed(1)}pt` });
+  if (totals.critDamagePoints > 0)
+    lines.push({ label: "会心ダメージ", value: `+${totals.critDamagePoints.toFixed(1)}pt` });
+  if (totals.elementResistPoints > 0)
+    lines.push({ label: "属性耐性", value: `+${totals.elementResistPoints.toFixed(1)}pt` });
+  return lines;
+}
+
 export function applyEquipmentBonusToStats(
   base: CharacterStatsAtLevel,
   bonus: EquipmentBonusTotals

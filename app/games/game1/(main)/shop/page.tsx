@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import GameBackground from "@/components/GameBackground";
 import { rollGachaItem } from "@/lib/item-drop";
-import { getItemBaseInfo, type ItemBaseInfo, type ItemRarity } from "@/lib/items-info";
+import { getItemBaseInfo, RARITY_COLOR, type ItemBaseInfo, type ItemRarity } from "@/lib/items-info";
 import { addItemsToInventory, loadGame1Data, saveGame1Data, type Game1SaveData } from "@/lib/game1-data";
 
 // 武器ガチャ画面。docs/spec/screens/shop.md参照。
@@ -22,13 +22,6 @@ const FRAME_DURATIONS_MS = [180, 80, 80, 90, 100, 120, 140, 180, 420];
 // 開封後、結果を少し見せてから次に引けるようにするための余韻。
 const RESULT_HOLD_MS = 900;
 
-const RARITY_LABEL_COLOR: Record<ItemRarity, string> = {
-  C: "#dce2e8",
-  B: "#5be08a",
-  A: "#5fb1ff",
-  S: "#c983ff",
-  SS: "#ffc25c",
-};
 
 function framePath(rarity: ItemRarity, frame: number) {
   return `/gacha/chest/${rarity}/frame_${String(frame).padStart(2, "0")}.png`;
@@ -176,7 +169,7 @@ export default function ShopPage() {
             <div className="flex flex-col items-center gap-1">
               <p
                 className="text-lg font-extrabold [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]"
-                style={{ color: RARITY_LABEL_COLOR[rarity] }}
+                style={{ color: RARITY_COLOR[rarity] }}
               >
                 {obtainedItem.name}（{rarity}）を獲得！
               </p>

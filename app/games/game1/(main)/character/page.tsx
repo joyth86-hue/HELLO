@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CHARACTER_BASE_INFO, getCharacterBaseInfo } from "@/lib/characters-info";
 import { getCharacterStatsAtLevel } from "@/lib/character-growth";
 import { BASE_CRIT_RATE, CRIT_DAMAGE_MULTIPLIER } from "@/lib/combat";
-import { calculateEquipmentBonus, applyEquipmentBonusToStats } from "@/lib/item-effects";
+import { calculateEquipmentBonus, applyEquipmentBonusToStats, describeItemEffect } from "@/lib/item-effects";
 import {
   findEquippedOwner,
   getCharacterEquipment,
@@ -30,7 +30,7 @@ import {
   type SynthesisPreview,
 } from "@/lib/item-synthesis";
 import { getEffectiveGame1Data } from "@/lib/test-mode";
-import { getItemBaseInfo, type ItemBaseInfo } from "@/lib/items-info";
+import { getItemBaseInfo, RARITY_COLOR, type ItemBaseInfo } from "@/lib/items-info";
 import { getCharacterSkillKit } from "@/lib/skills-info";
 import {
   isSkillUnlocked,
@@ -136,6 +136,38 @@ function CharacterPane({ id, frame }: { id: string; frame: number }) {
   );
 }
 
+// STATUS欄の1行。装備による上乗せ分は基礎値の右に緑色で「(+N)」と添える形にして、
+// 「強化した感じ」を出す（合計値だけ出すと装備の効果が実感しにくいとの指摘を受けて変更）。
+function StatLine({
+  label,
+  base,
+  bonus,
+  unit = "",
+}: {
+  label: string;
+  base: number;
+  bonus: number;
+  unit?: string;
+}) {
+  const roundedBonus = Math.round(bonus * 10) / 10;
+  return (
+    <div className="flex justify-between">
+      <span>{label}</span>
+      <span className="font-bold tabular-nums">
+        {base.toLocaleString()}
+        {unit}
+        {roundedBonus > 0 && (
+          <span className="text-[#5be08a]">
+            {" "}
+            (+{roundedBonus.toLocaleString()}
+            {unit})
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
 function EquipSlot({
   caption,
   entry,
@@ -191,6 +223,10 @@ export default function CharacterViewPage() {
   const [synthesisTargetId, setSynthesisTargetId] = useState<string | null>(null);
   const [synthesisMaterialIds, setSynthesisMaterialIds] = useState<string[]>([]);
   const [synthesisMessage, setSynthesisMessage] = useState<string | null>(null);
+  // 装備した直後に「強くなった感じ」を出すため、効果を見せる確認ポップアップの状態。
+  const [equipConfirm, setEquipConfirm] = useState<{ item: ItemBaseInfo; instance: ItemInstance } | null>(
+    null
+  );
   const frameRef = useRef<HTMLDivElement>(null);
   const pointerStartX = useRef<number | null>(null);
   const [idleFrame, setIdleFrame] = useState(0);
@@ -242,9 +278,6 @@ export default function CharacterViewPage() {
   // 実データ側だが、テストモード中はeffectiveDataの在庫にも同じ形の個体が乗る）。
   const equipmentBonus = calculateEquipmentBonus(currentEquipment, effectiveData?.inventory ?? []);
   const stats = applyEquipmentBonusToStats(baseStats, equipmentBonus);
-  const displayedCritRate = CRIT_RATE_PERCENT + equipmentBonus.critRatePoints;
-  const displayedCritDamage = CRIT_DAMAGE_PERCENT + equipmentBonus.critDamagePoints;
-  const displayedElementResist = PLACEHOLDER_ELEMENT_RESISTANCE + equipmentBonus.elementResistPoints;
 
   const owned = useMemo(() => {
     if (!effectiveData) return [];
@@ -426,6 +459,7 @@ export default function CharacterViewPage() {
 
   function equip(instanceId: string) {
     if (!picker) return;
+    const entry = candidates.find((c) => c.instance.instanceId === instanceId);
     if (picker.kind === "weapon") {
       updateEquipment({ ...currentEquipment, weapon: instanceId });
     } else {
@@ -434,6 +468,8 @@ export default function CharacterViewPage() {
       updateEquipment({ ...currentEquipment, artifacts });
     }
     setPicker(null);
+    // 装備した効果をその場で見せる（「数値が動くだけで実感が無い」との指摘を受けて追加）。
+    if (entry) setEquipConfirm(entry);
   }
 
   function unequip() {
@@ -573,30 +609,22 @@ export default function CharacterViewPage() {
               <span className="font-bold tabular-nums">{level}</span>
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-              <div className="flex justify-between">
-                <span>HP</span>
-                <span className="font-bold tabular-nums">{stats.hp.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>会心率</span>
-                <span className="font-bold tabular-nums">{displayedCritRate}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>攻撃力</span>
-                <span className="font-bold tabular-nums">{stats.atk.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>会心ダメージ</span>
-                <span className="font-bold tabular-nums">{displayedCritDamage}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>防御力</span>
-                <span className="font-bold tabular-nums">{stats.def.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>属性耐性</span>
-                <span className="font-bold tabular-nums">{displayedElementResist}%</span>
-              </div>
+              <StatLine label="HP" base={baseStats.hp} bonus={stats.hp - baseStats.hp} />
+              <StatLine label="会心率" base={CRIT_RATE_PERCENT} bonus={equipmentBonus.critRatePoints} unit="%" />
+              <StatLine label="攻撃力" base={baseStats.atk} bonus={stats.atk - baseStats.atk} />
+              <StatLine
+                label="会心ダメージ"
+                base={CRIT_DAMAGE_PERCENT}
+                bonus={equipmentBonus.critDamagePoints}
+                unit="%"
+              />
+              <StatLine label="防御力" base={baseStats.def} bonus={stats.def - baseStats.def} />
+              <StatLine
+                label="属性耐性"
+                base={PLACEHOLDER_ELEMENT_RESISTANCE}
+                bonus={equipmentBonus.elementResistPoints}
+                unit="%"
+              />
             </div>
           </div>
 
@@ -648,22 +676,23 @@ export default function CharacterViewPage() {
                   : "装備できるアーティファクトを持っていません"}
               </p>
             ) : (
-              <div className="grid grid-cols-8 gap-1.5">
+              <div className="grid grid-cols-4 gap-2.5">
                 {candidates.map(({ item, instance }) => {
                   const plus = flooredPlus(instance);
                   return (
                     <button
                       key={instance.instanceId}
                       onClick={() => equip(instance.instanceId)}
-                      className="relative rounded-lg border-2 border-zinc-300 bg-white p-1"
+                      className="relative rounded-xl border-2 bg-white p-1.5"
+                      style={{ borderColor: RARITY_COLOR[item.rarity] }}
                     >
                       <img
                         src={item.asset}
                         alt={item.name}
-                        className="aspect-square w-full rounded object-cover"
+                        className="aspect-square w-full rounded-lg object-cover"
                       />
                       {plus > 0 && (
-                        <span className="absolute bottom-0.5 right-0.5 rounded-full bg-black px-1 py-0.5 text-[8px] font-bold text-white">
+                        <span className="absolute bottom-1 right-1 rounded-full bg-black px-1.5 py-0.5 text-[10px] font-bold text-white">
                           +{plus}
                         </span>
                       )}
@@ -811,18 +840,19 @@ export default function CharacterViewPage() {
                 {synthesisEligible.length === 0 ? (
                   <p className="py-6 text-center text-sm text-zinc-500">合成できるアイテムを持っていません</p>
                 ) : (
-                  <div className="grid grid-cols-8 gap-1.5">
+                  <div className="grid grid-cols-4 gap-2.5">
                     {synthesisEligible.map(({ instance, item }) => {
                       const plus = flooredPlus(instance);
                       return (
                         <button
                           key={instance.instanceId}
                           onClick={() => pickSynthesisTarget(instance.instanceId)}
-                          className="relative rounded-lg border-2 border-zinc-300 bg-white p-1"
+                          className="relative rounded-xl border-2 bg-white p-1.5"
+                          style={{ borderColor: RARITY_COLOR[item.rarity] }}
                         >
-                          <img src={item.asset} alt={item.name} className="aspect-square w-full rounded object-cover" />
+                          <img src={item.asset} alt={item.name} className="aspect-square w-full rounded-lg object-cover" />
                           {plus > 0 && (
-                            <span className="absolute bottom-0.5 right-0.5 rounded-full bg-black px-1 py-0.5 text-[8px] font-bold text-white">
+                            <span className="absolute bottom-1 right-1 rounded-full bg-black px-1.5 py-0.5 text-[10px] font-bold text-white">
                               +{plus}
                             </span>
                           )}
@@ -861,7 +891,7 @@ export default function CharacterViewPage() {
                     合成できる同じ種類のアイテムを他に持っていません
                   </p>
                 ) : (
-                  <div className="grid grid-cols-8 gap-1.5">
+                  <div className="grid grid-cols-4 gap-2.5">
                     {synthesisMaterialCandidates.map(({ instance, item }) => {
                       const plus = flooredPlus(instance);
                       const selected = synthesisMaterialIds.includes(instance.instanceId);
@@ -869,18 +899,20 @@ export default function CharacterViewPage() {
                         <button
                           key={instance.instanceId}
                           onClick={() => toggleSynthesisMaterial(instance.instanceId)}
-                          className={`relative rounded-lg border-2 bg-white p-1 ${
-                            selected ? "border-[#4a3f86] shadow-[2px_2px_0_0_#4a3f86]" : "border-zinc-300"
-                          }`}
+                          className="relative rounded-xl border-2 bg-white p-1.5"
+                          style={{
+                            borderColor: selected ? "#4a3f86" : RARITY_COLOR[item.rarity],
+                            boxShadow: selected ? "2px 2px 0 0 #4a3f86" : undefined,
+                          }}
                         >
-                          <img src={item.asset} alt={item.name} className="aspect-square w-full rounded object-cover" />
+                          <img src={item.asset} alt={item.name} className="aspect-square w-full rounded-lg object-cover" />
                           {plus > 0 && (
-                            <span className="absolute bottom-0.5 right-0.5 rounded-full bg-black px-1 py-0.5 text-[8px] font-bold text-white">
+                            <span className="absolute bottom-1 right-1 rounded-full bg-black px-1.5 py-0.5 text-[10px] font-bold text-white">
                               +{plus}
                             </span>
                           )}
                           {selected && (
-                            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#4a3f86] text-[9px] font-bold text-white">
+                            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#4a3f86] text-[11px] font-bold text-white">
                               ✓
                             </span>
                           )}
@@ -919,6 +951,46 @@ export default function CharacterViewPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* 装備直後の効果確認ポップアップ。「数値が動くだけで実感が無い」との指摘を
+          受けて追加。戦闘結果画面のアイテム詳細ポップアップと同じ見た目で揃えている。 */}
+      {equipConfirm && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 px-6"
+          onClick={() => setEquipConfirm(null)}
+        >
+          <div
+            className="w-full max-w-[300px] rounded-2xl border border-[rgba(201,195,255,0.5)] px-4 py-4 [box-shadow:0_8px_24px_rgba(0,0,0,0.45)]"
+            style={{ background: "#241f47" }}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <img
+                src={equipConfirm.item.asset}
+                alt={equipConfirm.item.name}
+                className="h-20 w-20 rounded-xl border-2 object-cover"
+                style={{ borderColor: RARITY_COLOR[equipConfirm.item.rarity] }}
+              />
+              <p className="text-center text-base font-extrabold text-[#ffd27a]">
+                {equipConfirm.item.name}を装備した！
+              </p>
+              <p className="text-xs font-bold" style={{ color: RARITY_COLOR[equipConfirm.item.rarity] }}>
+                {equipConfirm.item.rarity}ランク
+                {flooredPlus(equipConfirm.instance) > 0 ? `　+${flooredPlus(equipConfirm.instance)}` : ""}
+              </p>
+            </div>
+            <div className="my-2.5 h-px bg-white/10" />
+            <div className="flex flex-col gap-1">
+              {describeItemEffect(equipConfirm.instance, equipConfirm.item).map((line) => (
+                <div key={line.label} className="flex justify-between text-xs font-bold">
+                  <span className="text-[#b8b3d9]">{line.label}</span>
+                  <span className="text-[#5be08a]">{line.value}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-center text-[10px] font-bold text-[#b8b3d9]">タップして閉じる</p>
+          </div>
+        </div>
       )}
     </div>
   );
