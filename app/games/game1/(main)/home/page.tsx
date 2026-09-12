@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatCurrency, loadGlobalData, saveGlobalData } from "@/lib/storage";
 import { loadGame1Data, saveGame1Data, type Game1SaveData } from "@/lib/game1-data";
 import { TEST_MODE_CODE } from "@/lib/test-mode";
@@ -28,7 +29,7 @@ const HOME_BACKGROUND = "/backgrounds/home/home_04_akane_koyuki_kaede_sayumi.png
 // アイコンは共通UIボタン素材（docs/spec/ui-buttons.md）から。プレゼントは
 // 「コードを入力」シート（本来はギフトコード引き換え用。合言葉を入れると
 // テストモードが切り替わる）、デイリーミッションはミッションシート、設定は
-// BGM/効果音のON/OFFシートを開く。残り1つ（図鑑）は配置のみでまだ何も起きない。
+// BGM/効果音のON/OFFシートを開く。図鑑は図鑑画面（/games/game1/guide）へ遷移する。
 const HOME_SIDE_BUTTONS = [
   { key: "present", label: "プレゼント", icon: "/icons/buttons/ui_present.png" },
   { key: "daily_missions", label: "デイリーミッション", icon: "/icons/buttons/ui_daily_missions.png" },
@@ -37,6 +38,7 @@ const HOME_SIDE_BUTTONS = [
 ];
 
 export default function Game1HomePage() {
+  const router = useRouter();
   const ready = useRequireSplashEntry();
   const [currency, setCurrency] = useState(0);
   const [expPoints, setExpPoints] = useState(0);
@@ -150,9 +152,11 @@ export default function Game1HomePage() {
               ? openCodeSheet
               : btn.key === "daily_missions"
                 ? () => setShowMissionSheet(true)
-                : btn.key === "settings"
-                  ? () => setShowSettingsSheet(true)
-                  : undefined;
+                : btn.key === "guide"
+                  ? () => router.push("/games/game1/guide")
+                  : btn.key === "settings"
+                    ? () => setShowSettingsSheet(true)
+                    : undefined;
           return (
             <button key={btn.key} aria-label={btn.label} onClick={onClick}>
               <img

@@ -89,7 +89,7 @@ export default function BagPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-28">
-          <div className="grid grid-cols-8 gap-1.5">
+          <div className="grid grid-cols-5 gap-1.5">
             {filtered.map(({ instance, item }) => {
               const plus = flooredPlus(instance);
               return (

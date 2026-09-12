@@ -41,3 +41,35 @@ export function pickRandomBossBattleBgm(): string {
   const index = Math.floor(Math.random() * BOSS_BATTLE_BGM_POOL.length);
   return BOSS_BATTLE_BGM_POOL[index];
 }
+
+// ファイルパス → 曲名（図鑑のBGM一覧で表示用）。元の曲名は`/音楽`フォルダの
+// 日本語ファイル名（例：「穏やかなとき.mp3」）そのもの。docs/spec/audio.mdの
+// 「画面ごとのBGM割り当て」表と対応させている。
+export const BGM_TITLES: Record<string, string> = {
+  [START_BGM]: "はじまり",
+  [HOME_BGM]: "穏やかなとき",
+  [STAGE_SELECT_BGM]: "束の間",
+  [SHOP_BGM]: "ドキドキ宝箱",
+  [STAGE_CLEAR_BGM]: "小さな達成感",
+  [DEFEAT_BGM]: "敗北を知る者たち",
+  "/audio/bgm/yuukan-na-senshi-tachi.mp3": "勇敢な戦士たち",
+  "/audio/bgm/tenkakeru-ryuu-no-hirameki.mp3": "天翔ける龍の閃き",
+  "/audio/bgm/tsuki-no-sekai.mp3": "月の世界",
+  "/audio/bgm/gekkou-ga-terasu-kemono.mp3": "月光が照らす獣",
+  "/audio/bgm/kouya-ni-fuku-kaze.mp3": "荒野に吹く風",
+  "/audio/bgm/shizukanaru-tatakai-1.mp3": "静かなる闘い1",
+  "/audio/bgm/kyouteki-arawaru.mp3": "強敵現る",
+  "/audio/bgm/shizukanaru-tatakai-2.mp3": "静かなる闘い2",
+};
+
+export interface BgmTrackEntry {
+  src: string;
+  title: string;
+}
+
+// 図鑑のBGMタブ用：ゲーム内で使っている全BGMを一覧表示する（聴いたことが
+// あるかどうかに関わらず全曲聴ける、ユーザー確認済みの割り切り）。
+export const ALL_BGM_TRACKS: BgmTrackEntry[] = Object.entries(BGM_TITLES).map(([src, title]) => ({
+  src,
+  title,
+}));

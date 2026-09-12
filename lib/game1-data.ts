@@ -42,7 +42,7 @@ export type EquipmentState = Record<string, CharacterEquipment>;
 
 // セーブデータの構造を変える際にインクリメントする。読み込み時にこれと一致しない
 // （＝古い構造の）データは初期状態として扱う（詳細はloadGame1Data参照）。
-export const SAVE_SCHEMA_VERSION = 5;
+export const SAVE_SCHEMA_VERSION = 6;
 
 export interface Game1SaveData {
   schemaVersion: number;
@@ -78,6 +78,14 @@ export interface Game1SaveData {
   dailyMissions: DailyMissionState;
   // テストプレイ用の全解放モード。詳細はlib/test-mode.ts参照。
   testMode: boolean;
+  // これまでに一度でも入手したことのあるアイテムID一覧（図鑑用）。合成で個体が
+  // 消費されてinventoryから消えても、ここからは消さない（「入手したことがある」の
+  // 記録のため）。addItemsToInventory()でのみ追加する。
+  unlockedItemIds: string[];
+  // これまでにボス戦（S-10）を撃破した累計回数。同じステージの周回クリアも
+  // 含める（maxClearedStageは「最大到達ステージ」であり、この累計値とは別物）。
+  // 図鑑の実績表示（ステージクリア数）用。
+  totalBossClears: number;
 }
 
 export const GAME1_ID = "game1";
@@ -220,6 +228,7 @@ export interface AddItemsResult {
 export function addItemsToInventory(data: Game1SaveData, itemIds: string[]): AddItemsResult {
   if (itemIds.length === 0) return { data, acceptedCount: 0, rejectedCount: 0 };
   const inventory = [...data.inventory];
+  const unlockedItemIds = new Set(data.unlockedItemIds);
   let acceptedCount = 0;
   let rejectedCount = 0;
   for (const itemId of itemIds) {
@@ -234,9 +243,14 @@ export function addItemsToInventory(data: Game1SaveData, itemIds: string[]): Add
       plus: 0,
       ...(substat ? { substatStat: substat.stat, substatValue: substat.value } : {}),
     });
+    unlockedItemIds.add(itemId);
     acceptedCount++;
   }
-  return { data: { ...data, inventory }, acceptedCount, rejectedCount };
+  return {
+    data: { ...data, inventory, unlockedItemIds: Array.from(unlockedItemIds) },
+    acceptedCount,
+    rejectedCount,
+  };
 }
 
 // 新しく仲間になったキャラクターを、編成人数が3人未満の間は自動で編成に加える
@@ -274,6 +288,8 @@ export const defaultGame1Data: Game1SaveData = {
   gachaTickets: 0,
   dailyMissions: defaultDailyMissionState,
   testMode: false,
+  unlockedItemIds: [],
+  totalBossClears: 0,
 };
 
 export function loadGame1Data(): Game1SaveData {

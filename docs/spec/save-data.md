@@ -78,6 +78,8 @@ interface Game1SaveData {
   gachaTickets: number; // ガチャ（武器ガチャ）チケットの所持数。デイリーミッション報酬で入手し、ショップ画面で1枚消費して宝箱を1回開ける（詳細はscreens/shop.md参照）
   dailyMissions: DailyMissionState; // デイリーミッションの今日の進捗・受取状況（詳細はlib/daily-missions.ts、screens/game1-home.md参照）
   testMode: boolean; // テストモード（全ステージ・全アイテム解放）。詳細はtest-mode.md参照
+  unlockedItemIds: string[]; // これまでに一度でも入手したことのあるアイテムID一覧（図鑑の「装備」タブ用）。合成で個体が消費されinventoryから消えても、ここからは消さない
+  totalBossClears: number; // これまでにボス戦（S-10）を撃破した累計回数（周回クリアも含む、図鑑の「実績」タブ用）。maxClearedStage（最大到達ステージ）とは別物
 }
 
 // デイリーミッションの進捗・受取状況（lib/daily-missions.ts）。dateはローカル日付
@@ -101,9 +103,13 @@ interface DailyMissionState {
 
 `inventory`の初期値は空配列（`[]`）。アイテムは[アイテムドロップ](./adventure-system.md#アイテムドロップ)でしか入手できない、正式なスタート状態。個体の管理・上限・合成の詳細は[items.md](./items.md#アイテムの個体管理合成のための前提)参照。
 
+`unlockedItemIds`は[lib/game1-data.ts](../../lib/game1-data.ts)の`addItemsToInventory()`（アイテムが実際にインベントリへ追加される唯一の箇所）でのみ追加する。合成（`applySynthesis()`）は既存の個体を消費するだけで新しいitemIdを生まないため、この値には影響しない。[図鑑画面](./screens/guide.md)の「装備」タブで、枠だけ並べた全アイテム一覧のうちどれを表示するかの判定に使う。
+
 `equipment`はキーにキャラクターIDが無い（＝一度も装備操作をしていない）場合、装備なし（`{ weapon: null, artifacts: [null, null, null] }`）として扱う（`getCharacterEquipment()`ヘルパー）。詳細は[character-view.md](./screens/character-view.md)参照。
 
 `maxClearedStage` / `activePartyIds`は[冒険システム設計](./adventure-system.md)で使う。キャラクターの仲間解放は`maxClearedStage`から`isCharacterUnlocked()`で判定し、新しく解放されたキャラクターは編成が3人未満なら`syncActivePartyWithUnlocks()`で自動的に`activePartyIds`へ追加する。
+
+`totalBossClears`は[app/games/game1/battle/page.tsx](<../../app/games/game1/battle/page.tsx>)の`commitRewards()`で、ステージクリア（`cleared`が`true`、＝ボスを撃破した）のたびに+1する。`maxClearedStage`の更新（最大値を更新するだけ）とは異なり、同じステージを何度クリアしても毎回加算される単純な累計カウンタ。
 
 `characterInvestedExp`は累計値のみを保存し、レベルは都度[lib/character-growth.ts](../../lib/character-growth.ts)の`levelFromInvestedExp()`で逆算する（`getCharacterLevel()`経由）。詳細は[adventure-system.md](./adventure-system.md#経験値とレベル成長)参照。
 

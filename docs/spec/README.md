@@ -14,6 +14,7 @@ CLAUDE.md本体には仕様を書かず、常にこの分冊側を更新する�
 | [screens/game1-home.md](./screens/game1-home.md) | Game 1 ホーム画面（冒険する/キャラクター/バッグの中身/ゲームを終了）の仕様 |
 | [screens/character-view.md](./screens/character-view.md) | キャラクター確認画面の仕様 |
 | [screens/bag.md](./screens/bag.md) | バッグの中身画面（所持アイテム一覧）の仕様 |
+| [screens/guide.md](./screens/guide.md) | 図鑑画面（実績／装備／BGM）の仕様 |
 | [screens/bottom-nav.md](./screens/bottom-nav.md) | 下部ナビゲーションバー（マップ/ショップ/冒険/仲間/バッグ）の仕様 |
 | [screens/shop.md](./screens/shop.md) | ショップ（武器ガチャ）画面の仕様。ガチャチケットを消費して抽選、演出込み |
 | [screens/battle.md](./screens/battle.md) | 戦闘画面のレイアウト設計（仲間・敵の配置） |

@@ -659,6 +659,7 @@ export default function BattlePage() {
       ...(cleared
         ? {
             maxClearedStage: Math.max(data.maxClearedStage, stage),
+            totalBossClears: data.totalBossClears + 1,
             skillPoints: data.skillPoints + SKILL_POINTS_PER_STAGE_CLEAR,
           }
         : {}),
