@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency, loadGlobalData, saveGlobalData } from "@/lib/storage";
-import { loadGame1Data, saveGame1Data, type Game1SaveData } from "@/lib/game1-data";
+import {
+  getUnlockedCharacterIds,
+  loadGame1Data,
+  saveGame1Data,
+  type Game1SaveData,
+} from "@/lib/game1-data";
 import { TEST_MODE_CODE } from "@/lib/test-mode";
 import { stickerButton } from "@/lib/ui";
 import { useRequireSplashEntry } from "@/lib/entry-guard";
@@ -21,9 +26,22 @@ import {
   type MissionListEntry,
 } from "@/lib/daily-missions";
 
-// 仲間が増えるたびに背景も賑やかになる想定（home_01=1人〜home_04=4人）。
-// パーティ編成の仕組みがまだ無いため、現状はテストとしてhome_04で固定。
-const HOME_BACKGROUND = "/backgrounds/home/home_04_akane_koyuki_kaede_sayumi.png";
+// 仲間が増えるたびに背景も賑やかになる（home_01=1人〜home_04=4人）。
+// 4枚とも仲間解放順（CHARACTER_UNLOCK_ORDER＝アカネ→コユキ→カエデ→サユミ）に
+// 対応した構図のため、「解放済みキャラクターの人数」で選ぶ（MAX_PARTY_SIZEは3人
+// までだが、キャラクターは4人いるため、編成人数ではなく解放人数を見る）。
+const HOME_BACKGROUNDS = [
+  "/backgrounds/home/home_01_akane.png",
+  "/backgrounds/home/home_02_akane_koyuki.png",
+  "/backgrounds/home/home_03_akane_koyuki_kaede.png",
+  "/backgrounds/home/home_04_akane_koyuki_kaede_sayumi.png",
+];
+
+function getHomeBackground(data: Game1SaveData): string {
+  const unlockedCount = getUnlockedCharacterIds(data).length;
+  const index = Math.min(Math.max(unlockedCount, 1), HOME_BACKGROUNDS.length) - 1;
+  return HOME_BACKGROUNDS[index];
+}
 
 // 画面右端・カエデの横の空きスペースに縦に並べる導線ボタン（上から順）。
 // アイコンは共通UIボタン素材（docs/spec/ui-buttons.md）から。プレゼントは
@@ -121,7 +139,7 @@ export default function Game1HomePage() {
     <div className="relative h-[100dvh] overflow-hidden bg-background">
       <BgmPlayer src={HOME_BGM} enabled={bgmEnabled} />
       <img
-        src={HOME_BACKGROUND}
+        src={saveData ? getHomeBackground(saveData) : HOME_BACKGROUNDS[0]}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 h-full w-full object-cover"

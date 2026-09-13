@@ -8,9 +8,9 @@
 
 ## 背景イラスト
 
-仲間の拠点（ギルドホール風の部屋）のイラストで、**編成している仲間の人数に応じて背景に描かれるキャラクターの人数も増える**想定（`home_01`=1人〜`home_04`=4人）。画像は[public/backgrounds/home/](../../../public/backgrounds/home/)に4種類（`home_01_akane.png` / `home_02_akane_koyuki.png` / `home_03_akane_koyuki_kaede.png` / `home_04_akane_koyuki_kaede_sayumi.png`）が揃っている。
+仲間の拠点（ギルドホール風の部屋）のイラストで、**解放済みの仲間の人数に応じて背景に描かれるキャラクターの人数も増える**（`home_01`=1人〜`home_04`=4人）。画像は[public/backgrounds/home/](../../../public/backgrounds/home/)に4種類（`home_01_akane.png` / `home_02_akane_koyuki.png` / `home_03_akane_koyuki_kaede.png` / `home_04_akane_koyuki_kaede_sayumi.png`）が揃っており、いずれも[仲間解放順](../adventure-system.md#キャラクターの仲間解放)（アカネ→コユキ→カエデ→サユミ）に対応した構図になっている。
 
-[バトルに参加する編成（`activePartyIds`）](../adventure-system.md#編成バトルに参加)自体はできたが、まだ背景画像の切り替えとは連動しておらず、**現状は`home_04`（4人とも揃った版）で固定**している（テスト目的、`HOME_BACKGROUND`定数）。
+`getUnlockedCharacterIds()`（[lib/game1-data.ts](../../../lib/game1-data.ts)）で解放済みキャラクター数を求め、`getHomeBackground()`でその人数に対応する画像を選ぶ（`HOME_BACKGROUNDS`配列）。**編成している人数（`activePartyIds`、[MAX_PARTY_SIZE](../adventure-system.md#編成バトルに参加)=3）ではなく解放済みの人数（最大4）で選ぶ**点に注意（キャラクターは4人いるが編成枠は3人までのため、編成人数を使うと4人目が仲間になっても背景が変わらない）。
 
 ## 表示要素
 
@@ -51,5 +51,4 @@
 
 - 「冒険」タブ（＝このホーム画面）の中身は、拠点機能の見せ方が決まり次第この仕様書と実装を更新する。
 - 背景イラスト（`home_04`）だと、下部ナビゲーションバー導入前は「キャラクター」「バッグの中身」ボタンの端がキャラクターの頭に軽く重なっていた。ナビゲーションバーへの移行でボタン自体が画面下部に集約されたため、その重なりは解消している。
-- `activePartyIds`（バトルに参加している人数・顔ぶれ）に応じて`HOME_BACKGROUND`を`home_01`〜`home_04`から動的に選ぶよう変更する。
 - 「ゲームを終了」（`/`に戻る）ボタンは、下部ナビゲーションバーへの移行にあたって一旦なくなった。必要であれば別の場所（設定画面など）に置き直すことを検討する。
